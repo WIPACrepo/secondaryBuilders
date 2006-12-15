@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE project [
+    <!ENTITY common-targets SYSTEM "file:../tools/resources/common-targets.xml">
+    <!ENTITY % pjt-defns SYSTEM "file:../tools/resources/sar-defns.xml">
+    %pjt-defns;
+]>
+
+<project name="secondaryBuilders" default="report" >
+	<description>
+Build the library and documentation for the "secondaryBuilders" project.
+	</description>
+	&common-targets;
+	&pjt-targets;
+</project>
