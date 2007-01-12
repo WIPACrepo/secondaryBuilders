@@ -49,14 +49,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
             throw new IllegalArgumentException("Dispatcher cannot be null");
         }
         this.dispatcher = dispatcher;
-
-        if (secBuilderMonitor != null) {
-            this.secBuilderMonitor = secBuilderMonitor;
-            secBuilderMonitor.initializeMonitor();
-            secBuilderMonitor.registerSplicer(splicer);
-        } else {
-            log.error("SecBuilderMonitor is null");
-        }
     }
 
     /**
@@ -88,7 +80,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
                 }
                 throw new RuntimeException(de);
             }
-            secBuilderMonitor.updateEventStatisitcs(payload.getPayloadBacking());
         }
 
         start = numberOfObjectsInSplicer;
@@ -148,8 +139,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
             // insert data boundary at begin of run
             dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTART_FLAG +
                     runNumber);
-            secBuilderMonitor.updateStartRun(DAQCmdInterface.DAQ_ONLINE_RUNSTART_FLAG +
-                    runNumber);
             if (log.isInfoEnabled()) {
                 log.info("entered starting state and calling dispatcher.dataBoundary()");
             }
@@ -179,8 +168,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     public void stopped(SplicerChangedEvent event) {
         try {
             dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTOP_FLAG +
-                    runNumber);
-            secBuilderMonitor.updateStopRun(DAQCmdInterface.DAQ_ONLINE_RUNSTOP_FLAG +
                     runNumber);
             if (log.isInfoEnabled()) {
                 log.info("entered stopped state and calling dispatcher.dataBoundary()");
@@ -230,7 +217,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
                 log.debug("Recycle payload " + payload);
             }
             // reduce memory commitment to splicer
-            secBuilderMonitor.reduceBytesCommittedToSplicer(payload);
             payload.recycle();
         }
     }
@@ -243,7 +229,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
         }
         this.splicer = splicer;
         this.splicer.addSplicerListener(this);
-        secBuilderMonitor.registerSplicer(splicer);
     }
 
     public void setRunNumber(int runNumber) {

@@ -75,12 +75,14 @@ public class SBComponent extends DAQComponent {
         long maxCacheBytes = compConfig.getMaxCacheBytes();
         long maxAcquireBytes = compConfig.getMaxAcquireBytes();
 
+        boolean isMonitoring = compConfig.isMonitoring();
+
         // init tcalBuilder classes
         if (compConfig.isTcalEnabled()) {
             if (log.isInfoEnabled()){
                 log.info("Constructing TcalBuilder");
             }
-            tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
+            //tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
             tcalBufferCache = new ByteBufferCache(granularity,
                     maxCacheBytes,
                     maxAcquireBytes,
@@ -92,11 +94,18 @@ public class SBComponent extends DAQComponent {
                     tcalDispatcher,
                     tcalBuilderMonitor);
             tcalSplicer = new SplicerImpl(tcalSplicedAnalysis);
+            addSplicer(tcalSplicer);
+
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
             tcalInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
                     COMP_ID, "stringHubTcalInput", tcalSplicer, tcalFactory);
-            tcalBuilderMonitor.setPayloadInputEngine(tcalInputEngine);
             addEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
+
+            if (isMonitoring){
+                tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", tcalInputEngine,
+                        tcalSplicer, tcalDispatcher);
+                addMBean("tcalBuilder", tcalBuilderMonitor);
+            }
         }
 
         // init snBuilder
@@ -104,7 +113,7 @@ public class SBComponent extends DAQComponent {
             if (log.isInfoEnabled()){
                 log.info("Constructing SNBuilder");
             }
-            snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
+            //snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
             snBufferCache = new ByteBufferCache(granularity,
                     maxCacheBytes,
                     maxAcquireBytes,
@@ -116,11 +125,18 @@ public class SBComponent extends DAQComponent {
                     snDispatcher,
                     snBuilderMonitor);
             snSplicer = new SplicerImpl(snSplicedAnalysis);
+            addSplicer(snSplicer);
+
             snSplicedAnalysis.setSplicer(snSplicer);
             snInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
                     COMP_ID, "stringHubSnInput", snSplicer, snFactory);
-            snBuilderMonitor.setPayloadInputEngine(snInputEngine);
             addEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
+
+            if (isMonitoring){
+                snBuilderMonitor = new SecBuilderMonitor("SnBuilder", snInputEngine,
+                        snSplicer, snDispatcher);
+                addMBean("snBuilder", snBuilderMonitor);
+            }
         }
 
         // init moniBuilder classes
@@ -128,7 +144,7 @@ public class SBComponent extends DAQComponent {
             if (log.isInfoEnabled()){
                 log.info("Constructing MoniBuilder");
             }
-            moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
+            //moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
             moniBufferCache = new ByteBufferCache(granularity,
                     maxCacheBytes,
                     maxAcquireBytes,
@@ -140,11 +156,18 @@ public class SBComponent extends DAQComponent {
                     moniDispatcher,
                     moniBuilderMonitor);
             moniSplicer = new SplicerImpl(moniSplicedAnalysis);
+            addSplicer(moniSplicer);
+
             moniSplicedAnalysis.setSplicer(moniSplicer);
             moniInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
                     COMP_ID, "stringHubMoniInput", moniSplicer, moniFactory);
-            moniBuilderMonitor.setPayloadInputEngine(moniInputEngine);
             addEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
+
+            if (isMonitoring){
+                moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder", moniInputEngine,
+                        moniSplicer, moniDispatcher);
+                addMBean("moniBuilder", moniBuilderMonitor);
+            }
         }
     }
 

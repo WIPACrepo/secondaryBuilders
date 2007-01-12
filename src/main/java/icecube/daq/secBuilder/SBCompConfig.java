@@ -20,4 +20,6 @@ public interface SBCompConfig extends DAQCompConfig {
     public boolean isSnEnabled();
 
     public boolean isMoniEnabled();
+
+    public boolean isMonitoring();
 }

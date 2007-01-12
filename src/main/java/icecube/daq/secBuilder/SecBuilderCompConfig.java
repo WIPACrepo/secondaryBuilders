@@ -24,12 +24,14 @@ public class SecBuilderCompConfig implements SBCompConfig{
     private boolean isTcalEnabled = true;
     private boolean isSnEnabled = true;
     private boolean isMoniEnabled = true;
+    private boolean isMonitoring = true;
 
     private Log log = LogFactory.getLog(SecBuilderCompConfig.class);
 
     public SecBuilderCompConfig(int granularity, long maxCacheByte,
                                 long maxAcquireBytes, boolean isTcalEnabled,
-                                boolean isSnEnabled, boolean isMoniEnabled){
+                                boolean isSnEnabled, boolean isMoniEnabled,
+                                boolean isMonitoring){
 
         this.granularity = granularity;
         this.maxCacheByte = maxCacheByte;
@@ -37,17 +39,18 @@ public class SecBuilderCompConfig implements SBCompConfig{
         this.isTcalEnabled = isTcalEnabled;
         this.isSnEnabled = isSnEnabled;
         this.isMoniEnabled = isMoniEnabled;
+        this.isMonitoring = isMonitoring;
 
         log.info("SBConfigComp parameters: \ngranularity = " + granularity +
-                "\nmaxCacheByte = " + maxCacheByte + "\nmaxAcquireBytes = " +
-                "\nisTcalEnabled = " + isTcalEnabled + "\nisSnEnabled = " +
+                "\nmaxCacheByte = " + maxCacheByte + "\nmaxAcquireBytes = " + maxAcquireBytes +
+                "\nisTcalEnabled = " + isTcalEnabled + "\nisSnEnabled = " + isSnEnabled +
                 "\nisMoniEnabled = " + isMoniEnabled);
     }
 
     public SecBuilderCompConfig(){
         log.info("SBConfigComp parameters: \ngranularity = " + granularity +
-                "\nmaxCacheByte = " + maxCacheByte + "\nmaxAcquireBytes = " +
-                "\nisTcalEnabled = " + isTcalEnabled + "\nisSnEnabled = " +
+                "\nmaxCacheByte = " + maxCacheByte + "\nmaxAcquireBytes = " + maxAcquireBytes +
+                "\nisTcalEnabled = " + isTcalEnabled + "\nisSnEnabled = " + isSnEnabled +
                 "\nisMoniEnabled = " + isMoniEnabled);
     }
 
@@ -78,5 +81,9 @@ public class SecBuilderCompConfig implements SBCompConfig{
 
     public boolean isMoniEnabled(){
         return isMoniEnabled;
+    }
+
+    public boolean isMonitoring(){
+        return isMonitoring;
     }
 }
