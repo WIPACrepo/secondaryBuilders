@@ -63,6 +63,10 @@ public class SBComponent extends DAQComponent {
     private SpliceablePayloadInputEngine snInputEngine;
     private SpliceablePayloadInputEngine moniInputEngine;
 
+    private boolean isTcalEnabled;
+    private boolean isSnEnabled;
+    private boolean isMoniEnabled;
+
     private static final String COMP_NAME = DAQCmdInterface.DAQ_SECONDARY_BUILDERS;
     private static final int COMP_ID = 0;
 
@@ -76,9 +80,12 @@ public class SBComponent extends DAQComponent {
         long maxAcquireBytes = compConfig.getMaxAcquireBytes();
 
         boolean isMonitoring = compConfig.isMonitoring();
+        isTcalEnabled = compConfig.isTcalEnabled();
+        isSnEnabled = compConfig.isSnEnabled();
+        isMoniEnabled = compConfig.isMoniEnabled();
 
         // init tcalBuilder classes
-        if (compConfig.isTcalEnabled()) {
+        if (isTcalEnabled) {
             if (log.isInfoEnabled()){
                 log.info("Constructing TcalBuilder");
             }
@@ -109,7 +116,7 @@ public class SBComponent extends DAQComponent {
         }
 
         // init snBuilder
-        if (compConfig.isSnEnabled()) {
+        if (isSnEnabled) {
             if (log.isInfoEnabled()){
                 log.info("Constructing SNBuilder");
             }
@@ -140,7 +147,7 @@ public class SBComponent extends DAQComponent {
         }
 
         // init moniBuilder classes
-        if (compConfig.isMoniEnabled()) {
+        if (isMoniEnabled) {
             if (log.isInfoEnabled()){
                 log.info("Constructing MoniBuilder");
             }
@@ -183,6 +190,40 @@ public class SBComponent extends DAQComponent {
         }
         if (compConfig.isMoniEnabled()) {
             moniSplicedAnalysis.setRunNumber(runNumber);
+        }
+    }
+
+    /**
+     * Set the destination directory where the dispatch files will be saved.
+     *
+     * @param dirName The absolute path of directory where the dispatch files will be stored.
+     */
+    public void setDispatchDestStorage(String dirName) {
+        if (isTcalEnabled){
+            tcalDispatcher.setDispatchDestStorage(dirName);
+        }
+        if (isSnEnabled){
+            snDispatcher.setDispatchDestStorage(dirName);
+        }
+        if (isMoniEnabled){
+            moniDispatcher.setDispatchDestStorage(dirName);
+        }
+    }
+
+    /**
+     * Set the maximum size of the dispatch file.
+     *
+     * @param maxFileSize the maximum size of the dispatch file.
+     */
+    public void setMaxFileSize(long maxFileSize) {
+        if (isTcalEnabled){
+            tcalDispatcher.setMaxFileSize(maxFileSize);
+        }
+        if (isSnEnabled){
+            snDispatcher.setMaxFileSize(maxFileSize);
+        }
+        if (isMoniEnabled){
+            moniDispatcher.setMaxFileSize(maxFileSize);
         }
     }
 
