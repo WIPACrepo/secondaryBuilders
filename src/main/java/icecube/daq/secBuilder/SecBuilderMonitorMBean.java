@@ -34,4 +34,20 @@ public interface SecBuilderMonitorMBean {
      * @return a long value
      */ 
     public long getTotalDispatchedData();
+
+    /**
+     * Returns the number of units still available in the disk (measured in MB).
+     * If it fails to check the disk space, then it returns -1.
+     *
+     * @return the number of units still available in the disk.
+     */
+    public int getDiskAvailable();
+
+    /**
+     * Returns the total number of units in the disk (measured in MB).
+     * If it fails to check the disk space, then it returns -1.
+     *
+     * @return the total number of units in the disk.
+     */
+    public int getDiskSize();
 }
