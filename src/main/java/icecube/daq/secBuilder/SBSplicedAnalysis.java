@@ -6,24 +6,16 @@
  */
 package icecube.daq.secBuilder;
 
-import icecube.daq.io.DispatchException;
+import icecube.daq.splicer.*;
+import icecube.daq.payload.splicer.Payload;
 import icecube.daq.io.Dispatcher;
-import icecube.daq.io.StreamMetaData;
-import icecube.daq.payload.IPayload;
-import icecube.daq.payload.impl.Monitor;
-import icecube.daq.splicer.SpliceableFactory;
-import icecube.daq.splicer.Spliceable;
-import icecube.daq.splicer.SplicedAnalysis;
-import icecube.daq.splicer.Splicer;
-import icecube.daq.splicer.SplicerChangedEvent;
-import icecube.daq.splicer.SplicerListener;
-import icecube.daq.util.IDOMRegistry;
-import icecube.daq.util.DOMInfo;
+import icecube.daq.io.DispatchException;
+import icecube.daq.common.DAQCmdInterface;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import java.nio.ByteBuffer;
 import java.util.List;
-
-import org.apache.log4j.Logger;
+import java.util.Iterator;
 
 /**
  * This is the the SplicedAnalysis that can be used with
@@ -32,29 +24,26 @@ import org.apache.log4j.Logger;
  * @author artur
  * @version $Id: SBSplicedAnalysis.java,v 1.0 2006/03/24 13:28:20 artur Exp $
  */
-public class SBSplicedAnalysis
-    implements SplicedAnalysis<Spliceable>, SplicerListener<Spliceable>
-{
-    private static final boolean STRIP_NONSTANDARD_MONI = true;
+public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
 
-    /** Database of DOM info */
-    private static IDOMRegistry domRegistry;
-    /** Have we complained about a missing DOM registry yet? */
-    private boolean warnedDomRegistry = false;
-
+    private SpliceableFactory spliceableFactory;
     private Dispatcher dispatcher;
     private Splicer splicer;
+    private SecBuilderMonitor secBuilderMonitor;
+    private int start;
+    private int lastInputListSize;
     private int runNumber;
-    private boolean reportedError;
-    private String streamName = "noname";
-    private boolean preScaling = false;
-    private long preScale = 1;
-    private long preScaleCount = 1;
 
-    private Logger log = Logger.getLogger(SBSplicedAnalysis.class);
+    private Log log = LogFactory.getLog(SBSplicedAnalysis.class);
 
-    public SBSplicedAnalysis(Dispatcher dispatcher)
-    {
+    public SBSplicedAnalysis(SpliceableFactory factory, Dispatcher dispatcher,
+                             SecBuilderMonitor secBuilderMonitor) {
+        if (factory == null) {
+            log.error("SpliceableFactory is null");
+            throw new IllegalArgumentException("SpliceableFactory cannot be null");
+        }
+        this.spliceableFactory = factory;
+
         if (dispatcher == null) {
             log.error("Dispatcher is null");
             throw new IllegalArgumentException("Dispatcher cannot be null");
@@ -67,394 +56,182 @@ public class SBSplicedAnalysis
      * List of Spliceable objects provided.
      *
      * @param splicedObjects a List of Spliceable objects.
+     * @param decrement      the decrement of the indices in the List since the last
+     *                       invocation.
      */
-    @Override
-    public void analyze(List<Spliceable> splicedObjects)
-    {
-        for (Spliceable spl : splicedObjects) {
-            if (spl == SpliceableFactory.LAST_POSSIBLE_SPLICEABLE) {
-                break;
-            }
+    public void execute(List splicedObjects, int decrement) {
+        // Loop over the new objects in the splicer
+        int numberOfObjectsInSplicer = splicedObjects.size();
+        lastInputListSize = numberOfObjectsInSplicer - (start - decrement);
 
-            // get the next payload
-            IPayload payload = (IPayload) spl;
+        if (log.isDebugEnabled()) {
+            log.debug("Splicer contains: [" + lastInputListSize + ":" + numberOfObjectsInSplicer + "]");
+        }
 
-            // gather data for monitoring messages
+        for (int index = start - decrement; numberOfObjectsInSplicer != index; index++) {
+
+            Payload payload = (Payload) splicedObjects.get(index);
+
             try {
-                gatherMonitoring(payload);
-            } catch (MoniException me) {
-                log.error("Cannot process payload " + payload, me);
-            } catch (Throwable thr) {
-                log.error("Unexpected monitoring error from " + payload, thr);
-            }
-
-            // scintillator/IceACT monitoring payloads break
-            // legacy IceTop software
-            if (!STRIP_NONSTANDARD_MONI || !isNonStandardDOM(payload)) {
-                // limit the byte buffer to the length specified in the header
-                ByteBuffer buf  = payload.getPayloadBacking();
-                buf.limit(buf.getInt(0));
-
-                // write out the payload
-                try {
-                    dispatchEvent(buf, payload.getUTCTime());
-                } catch (DispatchException de) {
-                    if (!reportedError) {
-                        log.error("couldn't dispatch the " + streamName +
-                                  " payload: ", de);
-                        reportedError = true;
-                    }
+                dispatcher.dispatchEvent(payload);
+            } catch (DispatchException de) {
+                if (log.isErrorEnabled()) {
+                    log.error("couldn't dispatch the payload: ", de);
                 }
+                throw new RuntimeException(de);
             }
+        }
 
+        start = numberOfObjectsInSplicer;
+
+        // call truncate on splicer
+        if (splicedObjects.size() > 0) {
+            Spliceable update = (Spliceable) splicedObjects.get(start - 1);
+            if (null != update) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Truncating splicer: " + update);
+                }
+                splicer.truncate(update);
+            }
+        }
+    }
+
+    /**
+     * Returns the {@link icecube.daq.splicer.SpliceableFactory} that should be used to create the
+     * {@link icecube.daq.splicer.Spliceable Splicable} objects used by this
+     * object.
+     *
+     * @return the SpliceableFactory that creates Spliceable objects.
+     */
+    public SpliceableFactory getFactory() {
+        return spliceableFactory;
+    }
+
+    /**
+     * Called when the {@link icecube.daq.splicer.Splicer Splicer} enters the disposed state.
+     *
+     * @param event the event encapsulating this state change.
+     */
+    public void disposed(SplicerChangedEvent event) {
+        if (log.isInfoEnabled()) {
+            log.info("Splicer entered DISPOSED state");
+        }
+    }
+
+    /**
+     * Called when the {@link icecube.daq.splicer.Splicer Splicer} enters the failed state.
+     *
+     * @param event the event encapsulating this state change.
+     */
+    public void failed(SplicerChangedEvent event) {
+        if (log.isInfoEnabled()) {
+            log.info("Splicer entered FAILED state");
+        }
+    }
+
+    /**
+     * Called when the {@link icecube.daq.splicer.Splicer Splicer} enters the starting state.
+     *
+     * @param event the event encapsulating this state change.
+     */
+    public void starting(SplicerChangedEvent event) {
+        try {
+            // insert data boundary at begin of run
+            dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTART_FLAG +
+                    runNumber);
+            if (log.isInfoEnabled()) {
+                log.info("entered starting state and calling dispatcher.dataBoundary()");
+            }
+        } catch (DispatchException de) {
+            if (log.isErrorEnabled()) {
+                log.error("failed on dispatcher.dataBoundary(): ", de);
+            }
+        }
+    }
+
+    /**
+     * Called when the {@link icecube.daq.splicer.Splicer Splicer} enters the started state.
+     *
+     * @param event the event encapsulating this state change.
+     */
+    public void started(SplicerChangedEvent event) {
+        if (log.isInfoEnabled()) {
+            log.info("Splicer entered STARTED state");
+        }
+    }
+
+    /**
+     * Called when the {@link icecube.daq.splicer.Splicer Splicer} enters the stopped state.
+     *
+     * @param event the event encapsulating this state change.
+     */
+    public void stopped(SplicerChangedEvent event) {
+        try {
+            dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTOP_FLAG +
+                    runNumber);
+            if (log.isInfoEnabled()) {
+                log.info("entered stopped state and calling dispatcher.dataBoundary()");
+            }
+        } catch (DispatchException de) {
+            if (log.isErrorEnabled()) {
+                log.error("failed on dispatcher.dataBoundary(): ", de);
+            }
+        }
+        // tell manager that we have stopped
+        if (log.isInfoEnabled()) {
+            log.info("entered stopped state. Splicer state is: " +
+                    splicer.getState() + ": " +
+                    splicer.getStateString());
+        }
+    }
+
+    /**
+     * Called when the {@link icecube.daq.splicer.Splicer Splicer} enters the stopping state.
+     *
+     * @param event the event encapsulating this state change.
+     */
+    public void stopping(SplicerChangedEvent event) {
+        if (log.isInfoEnabled()) {
+            log.info("Splicer entered STOPPING state");
+        }
+    }
+
+    /**
+     * Called when the {@link icecube.daq.splicer.Splicer Splicer} has truncated its "rope". This
+     * method is called whenever the "rope" is cut, for example to make a clean
+     * start from the frayed beginning of a "rope", and not jsut the the {@link
+     * Splicer#truncate(Spliceable)} method is invoked. This enables the client
+     * to be notified as to which Spliceable are nover going to be accessed
+     * again by the Splicer.
+     *
+     * @param event the event encapsulating this truncation.
+     */
+    public void truncated(SplicerChangedEvent event) {
+        if (log.isDebugEnabled()) {
+            log.debug("Splicer truncated: " + event.getSpliceable());
+        }
+        Iterator iter = event.getAllSpliceables().iterator();
+        while (iter.hasNext()) {
+            Payload payload = (Payload) iter.next();
+            if (log.isDebugEnabled()) {
+                log.debug("Recycle payload " + payload);
+            }
+            // reduce memory commitment to splicer
             payload.recycle();
         }
     }
 
-    /**
-     * Gather data for monitoring messages
-     *
-     * @param payload payload
-     *
-     * @throws MoniException if there is a problem
-     */
-    public void gatherMonitoring(IPayload payload)
-        throws MoniException
-    {
-        // override this method to do something with the payloads
-    }
-
-    /**
-     * Get the dispatcher object.
-     *
-     * @return dispatcher
-     */
-    public Dispatcher getDispatcher()
-    {
-        return dispatcher;
-    }
-
-    /**
-     * Get DOM info associated with the specified mainboard ID.
-     *
-     * @param mbid mainboard ID
-     *
-     * @return <tt>null</tt> if no DOM was found
-     *         (or if no DOM registry has been set)
-     */
-    DOMInfo getDOM(long mbid)
-    {
-        if (domRegistry == null) {
-            if (!warnedDomRegistry) {
-                log.error("DOM registry has not been set");
-                warnedDomRegistry = true;
-            }
-            return null;
-        }
-
-        return domRegistry.getDom(mbid);
-    }
-
-    /**
-     * Has the dom registry been set?
-     *
-     * @return <tt>false</tt> if there's no DOM registry object
-     */
-    boolean hasDOMRegistry()
-    {
-        return domRegistry != null;
-    }
-
-    /**
-     * Set the prescale factor - let through only every 'preScale'
-     * events (default=1)
-     *
-     * @param preScale the number of events to discard between letting
-     * one through.
-     */
-    void setPreScale(long preScale)
-    {
-        if (preScale <= 0L) {
-            throw new IllegalArgumentException("Bad " + streamName +
-                " prescale value: " + preScale);
-        }
-        // preScale is now >= 1
-
-        if (log.isInfoEnabled()) {
-            log.info("Setting " + streamName + " prescale to " + preScale);
-        }
-
-        // Setting to 1 => turning off preScaling
-        this.preScaling = preScale > 1;
-        this.preScale = preScale;
-        this.preScaleCount = 1;
-    }
-
-    /**
-     * Is this a monitoring payload from a scintillator or IceACT DOM?
-     *
-     * @param payload payload to check
-     *
-     * @return <tt>true</tt> if this is a non-standard DOM
-     */
-    boolean isNonStandardDOM(IPayload payload)
-    {
-        if (payload instanceof Monitor) {
-            Monitor mon = (Monitor) payload;
-
-            DOMInfo dom = getDOM(mon.getDOMID());
-            if (dom != null) {
-                return dom.isScintillator() || dom.isIceACT();
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Dispatch an event taking into account any prescale settings
-     * (meaning it might not dispatch it).
-     *
-     * @param buffer the ByteBuffer containg the event.
-     * @param ticks DAQ time for this payload
-     *
-     * @throws DispatchException is there is a problem in the Dispatch system.
-     */
-    private void dispatchEvent(ByteBuffer buf, long ticks)
-        throws DispatchException
-    {
-
-        if (preScaling) {
-            if (preScaleCount < preScale) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Discarding " + streamName +
-                              " prescaled event " + preScaleCount +
-                              " out of " + preScale);
-                }
-                preScaleCount++;
-                return;
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug("Resetting " + streamName +
-                        " prescale count, dispatching event.");
-                }
-                preScaleCount = 1;
-            }
-        }
-
-        synchronized (dispatcher) {
-            dispatcher.dispatchEvent(buf, ticks);
-        }
-    }
-
-
-    /**
-     * Send any cached monitoring data
-     *
-     * @param stopTime time when the component's stopped() method was called
-     *        (in DAQ ticks)
-     */
-    public void finishMonitoring(long stopTime)
-    {
-        // do nothing
-    }
-
-    /**
-     * Set the name of the secondary builder stream for this
-     * spliced analysis engine.
-     *
-     * @param name - the name of the stream
-     */
-    void setStreamName(String streamName)
-    {
-        this.streamName = streamName;
-    }
-
-    /**
-     * Called when the {@link icecube.daq.splicer.Splicer Splicer}
-     * enters the disposed state.
-     *
-     * @param event the event encapsulating this state change.
-     */
-    @Override
-    public void disposed(SplicerChangedEvent<Spliceable> event)
-    {
-        if (log.isInfoEnabled()) {
-            log.info("Splicer " + streamName + " entered DISPOSED state");
-        }
-    }
-
-    /**
-     * Called when the {@link icecube.daq.splicer.Splicer Splicer}
-     * enters the failed state.
-     *
-     * @param event the event encapsulating this state change.
-     */
-    @Override
-    public void failed(SplicerChangedEvent<Spliceable> event)
-    {
-        if (log.isInfoEnabled()) {
-            log.info("Splicer " + streamName + " entered FAILED state");
-        }
-    }
-
-    /**
-     * Get the stream metadata (currently number of dispatched events and
-     * last dispatched time)
-     *
-     * @return metadata object
-     */
-    public StreamMetaData getMetaData()
-    {
-        return dispatcher.getMetaData();
-    }
-
-    /**
-     * Get the current run number
-     *
-     * @return current run number
-     */
-    public int getRunNumber()
-    {
-        return runNumber;
-    }
-
-    /**
-     * Called when the {@link icecube.daq.splicer.Splicer Splicer}
-     * enters the starting state.
-     *
-     * @param event the event encapsulating this state change.
-     */
-    @Override
-    public void starting(SplicerChangedEvent<Spliceable> event)
-    {
-        try {
-            // insert data boundary at begin of run
-            dispatcher.dataBoundary(Dispatcher.START_PREFIX + runNumber);
-            if (log.isInfoEnabled()) {
-                log.info("entered " + streamName +
-                    " starting state and calling dispatcher.dataBoundary()");
-            }
-        } catch (DispatchException de) {
-            log.error("failed on " + streamName +
-                      " dispatcher.dataBoundary(): ", de);
-        }
-    }
-
-    /**
-     * Called when the {@link icecube.daq.splicer.Splicer Splicer}
-     * enters the started state.
-     *
-     * @param event the event encapsulating this state change.
-     */
-    @Override
-    public void started(SplicerChangedEvent<Spliceable> event)
-    {
-        if (log.isInfoEnabled()) {
-            log.info("Splicer " + streamName + " entered STARTED state");
-        }
-    }
-
-    /**
-     * Called when the {@link icecube.daq.splicer.Splicer Splicer}
-     * enters the stopped state.
-     *
-     * @param event the event encapsulating this state change.
-     */
-    @Override
-    public void stopped(SplicerChangedEvent<Spliceable> event)
-    {
-        try {
-            dispatcher.dataBoundary(Dispatcher.STOP_PREFIX + runNumber);
-            if (log.isInfoEnabled()) {
-                log.info("entered " + streamName +
-                    " stopped state and calling dispatcher.dataBoundary()");
-            }
-        } catch (DispatchException de) {
-            log.error("failed on " + streamName +
-                " dispatcher.dataBoundary(): ", de);
-        }
-        // tell manager that we have stopped
-        if (log.isInfoEnabled()) {
-            log.info("entered stopped state. Splicer " + streamName + " is " +
-                     splicer.getState().name());
-        }
-    }
-
-    /**
-     * Called when the {@link icecube.daq.splicer.Splicer Splicer}
-     * enters the stopping state.
-     *
-     * @param event the event encapsulating this state change.
-     */
-    @Override
-    public void stopping(SplicerChangedEvent<Spliceable> event)
-    {
-        if (log.isInfoEnabled()) {
-            log.info("Splicer " + streamName + " entered STOPPING state");
-        }
-    }
-
-    /**
-     * Set the DOM registry object
-     *
-     * @param reg registry
-     */
-    public static void setDOMRegistry(IDOMRegistry reg)
-    {
-        domRegistry = reg;
-    }
-
     // set the splicer and add this listener to the splicer
-    public void setSplicer(Splicer splicer)
-    {
+    public void setSplicer(Splicer splicer) {
         if (splicer == null) {
-            log.error("Splicer " + streamName + " cannot be null");
-            throw new IllegalArgumentException("Splicer " + streamName +
-                " cannot be null");
+            log.error("Splicer cannot be null");
+            throw new IllegalArgumentException("Splicer cannot be null");
         }
         this.splicer = splicer;
         this.splicer.addSplicerListener(this);
     }
 
-    /**
-     * Set the run number
-     *
-     * @param runNumber current run number
-     */
-    public void setRunNumber(int runNumber)
-    {
+    public void setRunNumber(int runNumber) {
         this.runNumber = runNumber;
-    }
-
-    /**
-     * Switch to a new run.
-     *
-     * @return number of events dispatched before the run was switched
-     *
-     * @param runNumber new run number
-     *
-     * @param switchTime time when the component's switching() method was
-     *        called (in DAQ ticks)
-     */
-    public StreamMetaData switchToNewRun(int runNumber, long switchTime) {
-        StreamMetaData metadata;
-        try {
-            synchronized (dispatcher) {
-                finishMonitoring(switchTime);
-                metadata = dispatcher.getMetaData();
-                dispatcher.dataBoundary(Dispatcher.SWITCH_PREFIX + runNumber);
-                if (log.isInfoEnabled()) {
-                    log.info("switched " + streamName + " to run " +
-                             runNumber);
-                }
-                this.runNumber = runNumber;
-            }
-        } catch (DispatchException de) {
-            log.error("failed to switch " + streamName, de);
-            metadata = null;
-        }
-
-        return metadata;
     }
 }
