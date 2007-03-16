@@ -14,6 +14,7 @@ import icecube.daq.common.DAQCmdInterface;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Iterator;
 
@@ -71,7 +72,18 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
         for (int index = start - decrement; numberOfObjectsInSplicer != index; index++) {
 
             Payload payload = (Payload) splicedObjects.get(index);
-
+            if (log.isDebugEnabled())
+            {
+                ByteBuffer buf  = payload.getPayloadBacking();
+                int recl = buf.getInt(0);
+                int limit = buf.limit();
+                int capacity = buf.capacity();
+                log.debug("Writing byte buffer - RECL=" 
+                        + recl + " LIMIT="
+                        + limit + " CAP="
+                        + capacity
+                        );
+            }
             try {
                 dispatcher.dispatchEvent(payload);
             } catch (DispatchException de) {
