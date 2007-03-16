@@ -73,6 +73,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
 
             Payload payload = (Payload) splicedObjects.get(index);
             ByteBuffer buf  = payload.getPayloadBacking();
+            buf.limit(buf.getInt(0));
             if (log.isDebugEnabled())
             {
                 int recl = buf.getInt(0);
