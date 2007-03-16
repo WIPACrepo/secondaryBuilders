@@ -72,9 +72,9 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
         for (int index = start - decrement; numberOfObjectsInSplicer != index; index++) {
 
             Payload payload = (Payload) splicedObjects.get(index);
+            ByteBuffer buf  = payload.getPayloadBacking();
             if (log.isDebugEnabled())
             {
-                ByteBuffer buf  = payload.getPayloadBacking();
                 int recl = buf.getInt(0);
                 int limit = buf.limit();
                 int capacity = buf.capacity();
@@ -85,7 +85,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
                         );
             }
             try {
-                dispatcher.dispatchEvent(payload);
+                dispatcher.dispatchEvent(buf);
             } catch (DispatchException de) {
                 if (log.isErrorEnabled()) {
                     log.error("couldn't dispatch the payload: ", de);
