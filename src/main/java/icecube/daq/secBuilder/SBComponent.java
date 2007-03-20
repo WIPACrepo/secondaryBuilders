@@ -106,7 +106,7 @@ public class SBComponent extends DAQComponent {
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
             tcalInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
                     COMP_ID, "stringHubTcalInput", tcalSplicer, tcalFactory);
-            addEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
+            addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
 
             if (isMonitoring){
                 tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", tcalInputEngine,
@@ -137,7 +137,7 @@ public class SBComponent extends DAQComponent {
             snSplicedAnalysis.setSplicer(snSplicer);
             snInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
                     COMP_ID, "stringHubSnInput", snSplicer, snFactory);
-            addEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
+            addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
 
             if (isMonitoring){
                 snBuilderMonitor = new SecBuilderMonitor("SnBuilder", snInputEngine,
@@ -168,7 +168,7 @@ public class SBComponent extends DAQComponent {
             moniSplicedAnalysis.setSplicer(moniSplicer);
             moniInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
                     COMP_ID, "stringHubMoniInput", moniSplicer, moniFactory);
-            addEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
+            addMonitoredEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
 
             if (isMonitoring){
                 moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder", moniInputEngine,
