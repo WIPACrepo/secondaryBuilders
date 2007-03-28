@@ -7,6 +7,8 @@
  */
 package icecube.daq.secBuilder;
 
+import java.io.IOException;
+
 import icecube.daq.juggler.component.DAQComponent;
 import icecube.daq.juggler.component.DAQConnector;
 import icecube.daq.juggler.component.DAQCompException;
@@ -19,6 +21,8 @@ import icecube.daq.splicer.SplicerImpl;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
 import icecube.daq.io.SpliceablePayloadInputEngine;
+import icecube.daq.io.SpliceablePayloadReader;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -59,9 +63,9 @@ public class SBComponent extends DAQComponent {
     private SecBuilderMonitor snBuilderMonitor;
     private SecBuilderMonitor moniBuilderMonitor;
 
-    private SpliceablePayloadInputEngine tcalInputEngine;
-    private SpliceablePayloadInputEngine snInputEngine;
-    private SpliceablePayloadInputEngine moniInputEngine;
+    private SpliceablePayloadReader tcalInputEngine;
+    private SpliceablePayloadReader snInputEngine;
+    private SpliceablePayloadReader moniInputEngine;
 
     private boolean isTcalEnabled;
     private boolean isSnEnabled;
@@ -70,7 +74,7 @@ public class SBComponent extends DAQComponent {
     private static final String COMP_NAME = DAQCmdInterface.DAQ_SECONDARY_BUILDERS;
     private static final int COMP_ID = 0;
 
-    public SBComponent(SBCompConfig compConfig) {
+    public SBComponent(SBCompConfig compConfig) throws IOException {
         super(COMP_NAME, COMP_ID);
         this.compConfig = compConfig;
 
@@ -104,9 +108,8 @@ public class SBComponent extends DAQComponent {
             addSplicer(tcalSplicer);
 
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
-            tcalInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
-                    COMP_ID, "stringHubTcalInput", tcalSplicer, tcalFactory);
-            addEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
+            tcalInputEngine = new SpliceablePayloadReader("tcalInputEngine", 5000, tcalSplicer, tcalFactory);
+            addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
 
             if (isMonitoring){
                 tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", tcalInputEngine,
@@ -135,9 +138,8 @@ public class SBComponent extends DAQComponent {
             addSplicer(snSplicer);
 
             snSplicedAnalysis.setSplicer(snSplicer);
-            snInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
-                    COMP_ID, "stringHubSnInput", snSplicer, snFactory);
-            addEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
+            snInputEngine = new SpliceablePayloadReader("stringHubSnInput", 10000, snSplicer, snFactory);
+            addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
 
             if (isMonitoring){
                 snBuilderMonitor = new SecBuilderMonitor("SnBuilder", snInputEngine,
@@ -166,9 +168,8 @@ public class SBComponent extends DAQComponent {
             addSplicer(moniSplicer);
 
             moniSplicedAnalysis.setSplicer(moniSplicer);
-            moniInputEngine = new SpliceablePayloadInputEngine(COMP_NAME,
-                    COMP_ID, "stringHubMoniInput", moniSplicer, moniFactory);
-            addEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
+            moniInputEngine = new SpliceablePayloadReader("stringHubMoniInput", 5000, moniSplicer, moniFactory);
+            addMonitoredEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
 
             if (isMonitoring){
                 moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder", moniInputEngine,
@@ -232,9 +233,16 @@ public class SBComponent extends DAQComponent {
      *
      * @param args command-line arguments
      *
-     * @throws icecube.daq.juggler.component.DAQCompException if there is a problem
      */
-    public static void main(String[] args) throws DAQCompException {
-        new DAQCompServer(new SBComponent(new SecBuilderCompConfig()), args);
+    public static void main(String[] args) {
+        try
+        {
+            new DAQCompServer(new SBComponent(new SecBuilderCompConfig()), args);
+        }
+        catch (Exception ex)
+        {
+            ex.printStackTrace();
+            System.exit(1);
+        }
     }
 }
