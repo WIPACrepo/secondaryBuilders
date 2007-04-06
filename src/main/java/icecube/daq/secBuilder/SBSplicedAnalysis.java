@@ -34,6 +34,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     private int start;
     private int lastInputListSize;
     private int runNumber;
+    private boolean reportedError;
 
     private Log log = LogFactory.getLog(SBSplicedAnalysis.class);
 
@@ -88,10 +89,10 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
             try {
                 dispatcher.dispatchEvent(buf);
             } catch (DispatchException de) {
-                if (log.isErrorEnabled()) {
+                if (log.isErrorEnabled() && !reportedError) {
                     log.error("couldn't dispatch the payload: ", de);
+                    reportedError = true;
                 }
-                throw new RuntimeException(de);
             }
         }
 
