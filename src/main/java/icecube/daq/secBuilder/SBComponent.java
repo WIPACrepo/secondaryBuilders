@@ -74,7 +74,7 @@ public class SBComponent extends DAQComponent {
     private static final String COMP_NAME = DAQCmdInterface.DAQ_SECONDARY_BUILDERS;
     private static final int COMP_ID = 0;
 
-    public SBComponent(SBCompConfig compConfig) throws IOException {
+    public SBComponent(SBCompConfig compConfig) {
         super(COMP_NAME, COMP_ID);
         this.compConfig = compConfig;
 
@@ -108,13 +108,23 @@ public class SBComponent extends DAQComponent {
             addSplicer(tcalSplicer);
 
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
-            tcalInputEngine = new SpliceablePayloadReader("tcalInputEngine", 5000, tcalSplicer, tcalFactory);
-            addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
-
-            if (isMonitoring){
-                tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", tcalInputEngine,
-                        tcalSplicer, tcalDispatcher);
-                addMBean("tcalBuilder", tcalBuilderMonitor);
+            try 
+            {
+                tcalInputEngine = new SpliceablePayloadReader("tcalInputEngine", 5000, tcalSplicer, tcalFactory);
+                addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
+    
+                if (isMonitoring){
+                    tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", tcalInputEngine,
+                            tcalSplicer, tcalDispatcher);
+                    addMBean("tcalBuilder", tcalBuilderMonitor);
+                }
+            }
+            catch (IOException iox)
+            {
+                // TODO - this is going to be hidden unless the
+                // operator starts up in verbose mode.  Fix.
+                log.error(iox);
+                System.exit(1);
             }
         }
 
@@ -138,13 +148,22 @@ public class SBComponent extends DAQComponent {
             addSplicer(snSplicer);
 
             snSplicedAnalysis.setSplicer(snSplicer);
-            snInputEngine = new SpliceablePayloadReader("stringHubSnInput", 10000, snSplicer, snFactory);
-            addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
-
-            if (isMonitoring){
-                snBuilderMonitor = new SecBuilderMonitor("SnBuilder", snInputEngine,
-                        snSplicer, snDispatcher);
-                addMBean("snBuilder", snBuilderMonitor);
+            try
+            {
+                snInputEngine = new SpliceablePayloadReader("stringHubSnInput", 10000, snSplicer, snFactory);
+                addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
+    
+                if (isMonitoring){
+                    snBuilderMonitor = new SecBuilderMonitor("SnBuilder", snInputEngine,
+                            snSplicer, snDispatcher);
+                    addMBean("snBuilder", snBuilderMonitor);
+                }
+            }
+            catch (IOException iox)
+            {
+                // TODO see tcal comment
+                log.error(iox);
+                System.exit(1);
             }
         }
 
@@ -168,13 +187,21 @@ public class SBComponent extends DAQComponent {
             addSplicer(moniSplicer);
 
             moniSplicedAnalysis.setSplicer(moniSplicer);
-            moniInputEngine = new SpliceablePayloadReader("stringHubMoniInput", 5000, moniSplicer, moniFactory);
-            addMonitoredEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
-
-            if (isMonitoring){
-                moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder", moniInputEngine,
-                        moniSplicer, moniDispatcher);
-                addMBean("moniBuilder", moniBuilderMonitor);
+            try
+            {
+                moniInputEngine = new SpliceablePayloadReader("stringHubMoniInput", 5000, moniSplicer, moniFactory);
+                addMonitoredEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
+    
+                if (isMonitoring){
+                    moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder", moniInputEngine,
+                            moniSplicer, moniDispatcher);
+                    addMBean("moniBuilder", moniBuilderMonitor);
+                }
+            }
+            catch (IOException iox)
+            {
+                log.error(iox);
+                System.exit(1);
             }
         }
     }
@@ -234,15 +261,8 @@ public class SBComponent extends DAQComponent {
      * @param args command-line arguments
      *
      */
-    public static void main(String[] args) {
-        try
-        {
-            new DAQCompServer(new SBComponent(new SecBuilderCompConfig()), args);
-        }
-        catch (Exception ex)
-        {
-            ex.printStackTrace();
-            System.exit(1);
-        }
+    public static void main(String[] args) throws Exception
+    {
+        new DAQCompServer(new SBComponent(new SecBuilderCompConfig()), args);
     }
 }

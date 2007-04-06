@@ -9,19 +9,19 @@ public interface SecBuilderMonitorMBean {
      * Get the type of data (i.e. tcal, sn, moni)
      * @return a String object
      */
-    public String getDataType();
+    //public String getDataType();
 
     /**
      * Get the state of the input processor for the secondary builder
      * @return a String object
      */
-    public String getInputProcessorState();
+    //public String getInputProcessorState();
 
     /**
      * Get the state of the Splicer
      * @return a String object
      */
-    public String getSplicerState();
+    //public String getSplicerState();
 
     /**
      * Get the number of Strands connected to the input channels
