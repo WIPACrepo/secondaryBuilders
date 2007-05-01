@@ -13,7 +13,9 @@ import icecube.daq.juggler.component.DAQComponent;
 import icecube.daq.juggler.component.DAQConnector;
 import icecube.daq.juggler.component.DAQCompException;
 import icecube.daq.juggler.component.DAQCompServer;
-import icecube.daq.payload.*;
+import icecube.daq.payload.IByteBufferCache;
+import icecube.daq.payload.VitreousBufferCache;
+import icecube.daq.payload.MasterPayloadFactory;
 import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Splicer;
@@ -78,11 +80,6 @@ public class SBComponent extends DAQComponent {
         super(COMP_NAME, COMP_ID);
         this.compConfig = compConfig;
 
-        // init the parameters for ByteBufferCache
-        int granularity = compConfig.getGranularity();
-        long maxCacheBytes = compConfig.getMaxCacheBytes();
-        long maxAcquireBytes = compConfig.getMaxAcquireBytes();
-
         boolean isMonitoring = compConfig.isMonitoring();
         isTcalEnabled = compConfig.isTcalEnabled();
         isSnEnabled = compConfig.isSnEnabled();
@@ -94,10 +91,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing TcalBuilder");
             }
             //tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
-            tcalBufferCache = new ByteBufferCache(granularity,
-                    maxCacheBytes,
-                    maxAcquireBytes,
-                    "TcalBuilder");
+            tcalBufferCache = new VitreousBufferCache();
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             tcalFactory = new MasterPayloadFactory(tcalBufferCache);
@@ -134,10 +128,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing SNBuilder");
             }
             //snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
-            snBufferCache = new ByteBufferCache(granularity,
-                    maxCacheBytes,
-                    maxAcquireBytes,
-                    "SNBuilder");
+            snBufferCache = new VitreousBufferCache();
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             snFactory = new MasterPayloadFactory(snBufferCache);
@@ -173,10 +164,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing MoniBuilder");
             }
             //moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
-            moniBufferCache = new ByteBufferCache(granularity,
-                    maxCacheBytes,
-                    maxAcquireBytes,
-                    "MonitorBuilder");
+            moniBufferCache = new VitreousBufferCache();
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             moniFactory = new MasterPayloadFactory(moniBufferCache);
