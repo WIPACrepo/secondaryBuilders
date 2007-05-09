@@ -13,9 +13,13 @@
   <artifactId>secondaryBuilders</artifactId>
   <packaging>jar</packaging>
   <name>secondaryBuilders</name>
+  <description>The secondary builder sub-systems (tcal, moni, sn streams) of the Surface Data Acquisition system for the IceCube Project.</description>
 
   <scm>
-    <connection>scm:svn:http://code.icecube.wisc.edu/daq/meta-projects/secondaryBuilders/trunk</connection>
+    <connection>scm:svn:http://code.icecube.wisc.edu/daq/projects/${project.name}/trunk</connection>
+    <developerConnection>scm:svn:http://code.icecube.wisc.edu/daq/projects/${project.name}/trunk</developerConnection>
+    <tag>HEAD</tag>
+    <url>http://code.icecube.wisc.edu/daq/projects/${project.name}</url>
   </scm>
 
   <build>
@@ -27,6 +31,9 @@
     </resources>
   </build>
 
+  <!-- Dependencies for this project.  These should not contain
+  versions.  The versions needed should be specified in the top-level
+  pom's dependencyManagement -->
   <dependencies>
     <dependency>
       <groupId>edu.wisc.icecube</groupId>
