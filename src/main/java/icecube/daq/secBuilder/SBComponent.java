@@ -22,7 +22,6 @@ import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerImpl;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
-import icecube.daq.io.SpliceablePayloadInputEngine;
 import icecube.daq.io.SpliceablePayloadReader;
 
 import org.apache.commons.logging.Log;
