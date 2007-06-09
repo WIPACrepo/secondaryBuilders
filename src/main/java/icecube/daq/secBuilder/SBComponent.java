@@ -9,8 +9,6 @@ package icecube.daq.secBuilder;
 
 import java.io.IOException;
 
-import java.util.HashMap;
-
 import icecube.daq.juggler.component.DAQComponent;
 import icecube.daq.juggler.component.DAQConnector;
 import icecube.daq.juggler.component.DAQCompException;
@@ -33,7 +31,8 @@ import org.apache.commons.logging.LogFactory;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 2146 2007-10-17 01:37:59Z ksb $
+ * @author artur
+ * @version $Id: SBComponent.java,v 1.0 2006/11/28 14:27:09 artur Exp $
  */
 public class SBComponent extends DAQComponent {
 
@@ -75,14 +74,6 @@ public class SBComponent extends DAQComponent {
 
     private static final String COMP_NAME = DAQCmdInterface.DAQ_SECONDARY_BUILDERS;
     private static final int COMP_ID = 0;
-
-    /** svn version information */
-    private static final HashMap SVN_VER_INFO;
-    static {
-	SVN_VER_INFO = new HashMap(4);
-	SVN_VER_INFO.put("id",  "$Id: SBComponent.java 2146 2007-10-17 01:37:59Z ksb $");
-	SVN_VER_INFO.put("url", "$URL: http://code.icecube.wisc.edu/daq/projects/secondaryBuilders/releases/Grange/src/main/java/icecube/daq/secBuilder/SBComponent.java $");
-    }
 
     public SBComponent(SBCompConfig compConfig) {
         super(COMP_NAME, COMP_ID);
@@ -250,18 +241,6 @@ public class SBComponent extends DAQComponent {
             moniDispatcher.setMaxFileSize(maxFileSize);
         }
     }
-
-
-    /**
-     * Return this component's svn version info as a HashMap.
-     *
-     * @return svn version info (id, url) as a HashMap
-     */
-    public HashMap getVersionInfo()
-    {
-	return SVN_VER_INFO;
-    }
-
 
     /**
      * Run a DAQ component server.

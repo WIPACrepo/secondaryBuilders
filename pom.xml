@@ -23,30 +23,6 @@
   </scm>
 
   <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>secondaryBuilders-comp</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-            <configuration>
-              <classifier>comp</classifier>
-              <archive>
-                <manifest>
-                  <mainClass>icecube.daq.secBuilder.SBComponent</mainClass>
-                  <addClasspath>true</addClasspath>
-                  <classpathPrefix>../lib</classpathPrefix>
-                </manifest>
-              </archive>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
     <resources>
       <resource>
         <directory>src/main/resources</directory>
