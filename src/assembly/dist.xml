@@ -1,20 +1,22 @@
 <assembly>
-  <id>exec</id>
+  <id>dist</id>
   <formats>
-    <format>jar</format>
+    <format>dir</format>
   </formats>
   <includeBaseDirectory>false</includeBaseDirectory>
   <fileSets>
     <fileSet>
-      <directory>target/classes</directory>  <!-- is there a ${property} for this? -->
+      <directory>target</directory>
       <outputDirectory></outputDirectory>
+      <includes>
+        <include>*.jar</include>
+      </includes>
     </fileSet>
   </fileSets>
   <dependencySets>
     <dependencySet>
-      <outputDirectory></outputDirectory>
-      <outputFileNameMapping></outputFileNameMapping>
-      <unpack>true</unpack>
+      <outputDirectory>lib</outputDirectory>
+      <unpack>false</unpack>
     </dependencySet>
   </dependencySets>
 </assembly>

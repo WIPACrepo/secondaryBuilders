@@ -25,17 +25,32 @@
   <build>
     <plugins>
       <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
         <configuration>
-          <descriptors>
-            <descriptor>src/assembly/exec.xml</descriptor>
-          </descriptors>
           <archive>
             <manifest>
               <mainClass>icecube.daq.secBuilder.SBComponent</mainClass>
+              <addClasspath>true</addClasspath>
             </manifest>
           </archive>
         </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <descriptors>
+            <descriptor>src/assembly/dist.xml</descriptor>
+          </descriptors>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>attached</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
     <resources>
