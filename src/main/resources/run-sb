@@ -24,9 +24,9 @@ daq-log"
 # what is (and only what is) needed.
 REQ_LIBS="commons-logging-1.0.3 \
 log4j-1.2.7 \
-xmlrpc-common-3.0 \
-xmlrpc-client-3.0 \
-xmlrpc-server-3.0 \
+xmlrpc-common-3.0.1-ICECUBE \
+xmlrpc-client-3.0.1-ICECUBE \
+xmlrpc-server-3.0.1-ICECUBE \
 icebucket-3.0.2 \
 concurrent-1.3.4 \
 jmxtools-1.2.1 \
