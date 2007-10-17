@@ -9,18 +9,21 @@ package icecube.daq.secBuilder;
 
 import java.io.IOException;
 
+import java.util.HashMap;
+
 import icecube.daq.juggler.component.DAQComponent;
 import icecube.daq.juggler.component.DAQConnector;
 import icecube.daq.juggler.component.DAQCompException;
 import icecube.daq.juggler.component.DAQCompServer;
-import icecube.daq.payload.*;
+import icecube.daq.payload.IByteBufferCache;
+import icecube.daq.payload.VitreousBufferCache;
+import icecube.daq.payload.MasterPayloadFactory;
 import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerImpl;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
-import icecube.daq.io.SpliceablePayloadInputEngine;
 import icecube.daq.io.SpliceablePayloadReader;
 
 import org.apache.commons.logging.Log;
@@ -30,8 +33,7 @@ import org.apache.commons.logging.LogFactory;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @author artur
- * @version $Id: SBComponent.java,v 1.0 2006/11/28 14:27:09 artur Exp $
+ * @version $Id: SBComponent.java 2146 2007-10-17 01:37:59Z ksb $
  */
 public class SBComponent extends DAQComponent {
 
@@ -74,14 +76,17 @@ public class SBComponent extends DAQComponent {
     private static final String COMP_NAME = DAQCmdInterface.DAQ_SECONDARY_BUILDERS;
     private static final int COMP_ID = 0;
 
+    /** svn version information */
+    private static final HashMap SVN_VER_INFO;
+    static {
+	SVN_VER_INFO = new HashMap(4);
+	SVN_VER_INFO.put("id",  "$Id: SBComponent.java 2146 2007-10-17 01:37:59Z ksb $");
+	SVN_VER_INFO.put("url", "$URL: http://code.icecube.wisc.edu/daq/projects/secondaryBuilders/releases/Grange/src/main/java/icecube/daq/secBuilder/SBComponent.java $");
+    }
+
     public SBComponent(SBCompConfig compConfig) {
         super(COMP_NAME, COMP_ID);
         this.compConfig = compConfig;
-
-        // init the parameters for ByteBufferCache
-        int granularity = compConfig.getGranularity();
-        long maxCacheBytes = compConfig.getMaxCacheBytes();
-        long maxAcquireBytes = compConfig.getMaxAcquireBytes();
 
         boolean isMonitoring = compConfig.isMonitoring();
         isTcalEnabled = compConfig.isTcalEnabled();
@@ -94,10 +99,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing TcalBuilder");
             }
             //tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
-            tcalBufferCache = new ByteBufferCache(granularity,
-                    maxCacheBytes,
-                    maxAcquireBytes,
-                    "TcalBuilder");
+            tcalBufferCache = new VitreousBufferCache();
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             tcalFactory = new MasterPayloadFactory(tcalBufferCache);
@@ -134,10 +136,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing SNBuilder");
             }
             //snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
-            snBufferCache = new ByteBufferCache(granularity,
-                    maxCacheBytes,
-                    maxAcquireBytes,
-                    "SNBuilder");
+            snBufferCache = new VitreousBufferCache();
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             snFactory = new MasterPayloadFactory(snBufferCache);
@@ -173,10 +172,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing MoniBuilder");
             }
             //moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
-            moniBufferCache = new ByteBufferCache(granularity,
-                    maxCacheBytes,
-                    maxAcquireBytes,
-                    "MonitorBuilder");
+            moniBufferCache = new VitreousBufferCache();
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             moniFactory = new MasterPayloadFactory(moniBufferCache);
@@ -254,6 +250,18 @@ public class SBComponent extends DAQComponent {
             moniDispatcher.setMaxFileSize(maxFileSize);
         }
     }
+
+
+    /**
+     * Return this component's svn version info as a HashMap.
+     *
+     * @return svn version info (id, url) as a HashMap
+     */
+    public HashMap getVersionInfo()
+    {
+	return SVN_VER_INFO;
+    }
+
 
     /**
      * Run a DAQ component server.
