@@ -13,6 +13,8 @@ import icecube.daq.juggler.component.DAQComponent;
 import icecube.daq.juggler.component.DAQConnector;
 import icecube.daq.juggler.component.DAQCompException;
 import icecube.daq.juggler.component.DAQCompServer;
+import icecube.daq.juggler.mbean.MemoryStatistics;
+import icecube.daq.juggler.mbean.SystemStatistics;
 import icecube.daq.payload.IByteBufferCache;
 import icecube.daq.payload.VitreousBufferCache;
 import icecube.daq.payload.MasterPayloadFactory;
@@ -31,7 +33,7 @@ import org.apache.commons.logging.LogFactory;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 2168 2007-10-20 01:15:02Z ksb $
+ * @version $Id: SBComponent.java 2245 2007-11-05 23:50:38Z ksb $
  */
 public class SBComponent extends DAQComponent {
 
@@ -190,6 +192,9 @@ public class SBComponent extends DAQComponent {
                 System.exit(1);
             }
         }
+
+        addMBean("jvm", new MemoryStatistics());
+        addMBean("system", new SystemStatistics());
     }
 
     public void setRunNumber(int runNumber) {
@@ -249,7 +254,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-	return "$Id: SBComponent.java 2168 2007-10-20 01:15:02Z ksb $";
+	return "$Id: SBComponent.java 2245 2007-11-05 23:50:38Z ksb $";
     }
 
 
