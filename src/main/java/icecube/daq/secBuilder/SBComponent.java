@@ -33,7 +33,7 @@ import org.apache.commons.logging.LogFactory;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 2245 2007-11-05 23:50:38Z ksb $
+ * @version $Id: SBComponent.java 2357 2007-12-03 19:54:04Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -94,6 +94,7 @@ public class SBComponent extends DAQComponent {
             tcalBufferCache = new VitreousBufferCache();
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
+            addMBean(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             tcalFactory = new MasterPayloadFactory(tcalBufferCache);
             tcalSplicedAnalysis = new SBSplicedAnalysis(tcalFactory,
                     tcalDispatcher,
@@ -131,6 +132,7 @@ public class SBComponent extends DAQComponent {
             snBufferCache = new VitreousBufferCache();
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
+            addMBean(DAQConnector.TYPE_SN_DATA, snBufferCache);
             snFactory = new MasterPayloadFactory(snBufferCache);
             snSplicedAnalysis = new SBSplicedAnalysis(snFactory,
                     snDispatcher,
@@ -167,6 +169,7 @@ public class SBComponent extends DAQComponent {
             moniBufferCache = new VitreousBufferCache();
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
+            addMBean(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             moniFactory = new MasterPayloadFactory(moniBufferCache);
             moniSplicedAnalysis = new SBSplicedAnalysis(moniFactory,
                     moniDispatcher,
@@ -254,7 +257,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-	return "$Id: SBComponent.java 2245 2007-11-05 23:50:38Z ksb $";
+	return "$Id: SBComponent.java 2357 2007-12-03 19:54:04Z dglo $";
     }
 
 
