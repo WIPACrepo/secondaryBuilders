@@ -21,7 +21,7 @@ import icecube.daq.payload.MasterPayloadFactory;
 import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Splicer;
-import icecube.daq.splicer.SplicerImpl;
+import icecube.daq.splicer.HKN1Splicer;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
 import icecube.daq.io.SpliceablePayloadReader;
@@ -33,7 +33,7 @@ import org.apache.commons.logging.LogFactory;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 2357 2007-12-03 19:54:04Z dglo $
+ * @version $Id: SBComponent.java 2376 2007-12-04 23:02:14Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -99,7 +99,7 @@ public class SBComponent extends DAQComponent {
             tcalSplicedAnalysis = new SBSplicedAnalysis(tcalFactory,
                     tcalDispatcher,
                     tcalBuilderMonitor);
-            tcalSplicer = new SplicerImpl(tcalSplicedAnalysis);
+            tcalSplicer = new HKN1Splicer(tcalSplicedAnalysis);
             addSplicer(tcalSplicer);
 
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
@@ -137,7 +137,7 @@ public class SBComponent extends DAQComponent {
             snSplicedAnalysis = new SBSplicedAnalysis(snFactory,
                     snDispatcher,
                     snBuilderMonitor);
-            snSplicer = new SplicerImpl(snSplicedAnalysis);
+            snSplicer = new HKN1Splicer(snSplicedAnalysis);
             addSplicer(snSplicer);
 
             snSplicedAnalysis.setSplicer(snSplicer);
@@ -174,7 +174,7 @@ public class SBComponent extends DAQComponent {
             moniSplicedAnalysis = new SBSplicedAnalysis(moniFactory,
                     moniDispatcher,
                     moniBuilderMonitor);
-            moniSplicer = new SplicerImpl(moniSplicedAnalysis);
+            moniSplicer = new HKN1Splicer(moniSplicedAnalysis);
             addSplicer(moniSplicer);
 
             moniSplicedAnalysis.setSplicer(moniSplicer);
@@ -257,7 +257,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-	return "$Id: SBComponent.java 2357 2007-12-03 19:54:04Z dglo $";
+	return "$Id: SBComponent.java 2376 2007-12-04 23:02:14Z dglo $";
     }
 
 
