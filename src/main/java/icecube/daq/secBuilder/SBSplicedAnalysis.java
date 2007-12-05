@@ -70,7 +70,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
             log.debug("Splicer contains: [" + lastInputListSize + ":" + numberOfObjectsInSplicer + "]");
         }
 
-        for (int index = start - decrement; numberOfObjectsInSplicer != index; index++) {
+        for (int index = start - decrement; index < numberOfObjectsInSplicer; index++) {
 
             Payload payload = (Payload) splicedObjects.get(index);
             ByteBuffer buf  = payload.getPayloadBacking();
