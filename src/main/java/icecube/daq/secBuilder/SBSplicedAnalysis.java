@@ -6,17 +6,23 @@
  */
 package icecube.daq.secBuilder;
 
-import icecube.daq.splicer.*;
-import icecube.daq.payload.splicer.Payload;
-import icecube.daq.io.Dispatcher;
-import icecube.daq.io.DispatchException;
 import icecube.daq.common.DAQCmdInterface;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import icecube.daq.io.DispatchException;
+import icecube.daq.io.Dispatcher;
+import icecube.daq.payload.splicer.Payload;
+import icecube.daq.splicer.Spliceable;
+import icecube.daq.splicer.SpliceableFactory;
+import icecube.daq.splicer.SplicedAnalysis;
+import icecube.daq.splicer.Splicer;
+import icecube.daq.splicer.SplicerChangedEvent;
+import icecube.daq.splicer.SplicerListener;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Iterator;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * This is the the SplicedAnalysis that can be used with
@@ -30,7 +36,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     private SpliceableFactory spliceableFactory;
     private Dispatcher dispatcher;
     private Splicer splicer;
-    private SecBuilderMonitor secBuilderMonitor;
     private int start;
     private int lastInputListSize;
     private int runNumber;
@@ -80,7 +85,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
                 int recl = buf.getInt(0);
                 int limit = buf.limit();
                 int capacity = buf.capacity();
-                log.debug("Writing byte buffer - RECL=" 
+                log.debug("Writing byte buffer - RECL="
                         + recl + " LIMIT="
                         + limit + " CAP="
                         + capacity

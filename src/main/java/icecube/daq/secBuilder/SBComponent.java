@@ -7,24 +7,23 @@
  */
 package icecube.daq.secBuilder;
 
-import java.io.IOException;
-
-import icecube.daq.juggler.component.DAQComponent;
-import icecube.daq.juggler.component.DAQConnector;
-import icecube.daq.juggler.component.DAQCompException;
-import icecube.daq.juggler.component.DAQCompServer;
-import icecube.daq.juggler.mbean.MemoryStatistics;
-import icecube.daq.juggler.mbean.SystemStatistics;
-import icecube.daq.payload.IByteBufferCache;
-import icecube.daq.payload.VitreousBufferCache;
-import icecube.daq.payload.MasterPayloadFactory;
 import icecube.daq.common.DAQCmdInterface;
-import icecube.daq.splicer.SpliceableFactory;
-import icecube.daq.splicer.Splicer;
-import icecube.daq.splicer.HKN1Splicer;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
 import icecube.daq.io.SpliceablePayloadReader;
+import icecube.daq.juggler.component.DAQCompServer;
+import icecube.daq.juggler.component.DAQComponent;
+import icecube.daq.juggler.component.DAQConnector;
+import icecube.daq.juggler.mbean.MemoryStatistics;
+import icecube.daq.juggler.mbean.SystemStatistics;
+import icecube.daq.payload.IByteBufferCache;
+import icecube.daq.payload.MasterPayloadFactory;
+import icecube.daq.payload.VitreousBufferCache;
+import icecube.daq.splicer.HKN1Splicer;
+import icecube.daq.splicer.SpliceableFactory;
+import icecube.daq.splicer.Splicer;
+
+import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,7 +32,7 @@ import org.apache.commons.logging.LogFactory;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 2376 2007-12-04 23:02:14Z dglo $
+ * @version $Id: SBComponent.java 2629 2008-02-11 05:48:36Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -103,11 +102,11 @@ public class SBComponent extends DAQComponent {
             addSplicer(tcalSplicer);
 
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
-            try 
+            try
             {
                 tcalInputEngine = new SpliceablePayloadReader("tcalInputEngine", 5000, tcalSplicer, tcalFactory);
                 addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
-    
+
                 if (isMonitoring){
                     tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", tcalInputEngine,
                             tcalSplicer, tcalDispatcher);
@@ -145,7 +144,7 @@ public class SBComponent extends DAQComponent {
             {
                 snInputEngine = new SpliceablePayloadReader("stringHubSnInput", 10000, snSplicer, snFactory);
                 addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
-    
+
                 if (isMonitoring){
                     snBuilderMonitor = new SecBuilderMonitor("SnBuilder", snInputEngine,
                             snSplicer, snDispatcher);
@@ -182,7 +181,7 @@ public class SBComponent extends DAQComponent {
             {
                 moniInputEngine = new SpliceablePayloadReader("stringHubMoniInput", 5000, moniSplicer, moniFactory);
                 addMonitoredEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
-    
+
                 if (isMonitoring){
                     moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder", moniInputEngine,
                             moniSplicer, moniDispatcher);
@@ -257,7 +256,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-	return "$Id: SBComponent.java 2376 2007-12-04 23:02:14Z dglo $";
+	return "$Id: SBComponent.java 2629 2008-02-11 05:48:36Z dglo $";
     }
 
 
