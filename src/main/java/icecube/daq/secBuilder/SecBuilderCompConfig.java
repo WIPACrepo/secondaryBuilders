@@ -41,17 +41,27 @@ public class SecBuilderCompConfig implements SBCompConfig{
         this.isMoniEnabled = isMoniEnabled;
         this.isMonitoring = isMonitoring;
 
-        log.info("SBConfigComp parameters: \ngranularity = " + granularity +
-                "\nmaxCacheByte = " + maxCacheByte + "\nmaxAcquireBytes = " + maxAcquireBytes +
-                "\nisTcalEnabled = " + isTcalEnabled + "\nisSnEnabled = " + isSnEnabled +
-                "\nisMoniEnabled = " + isMoniEnabled);
+        if (log.isInfoEnabled()) {
+            log.info("SBConfigComp parameters: \n" +
+                     "granularity = " + granularity + "\n" +
+                     "maxCacheByte = " + maxCacheByte + "\n" +
+                     "maxAcquireBytes = " + maxAcquireBytes + "\n" +
+                     "isTcalEnabled = " + isTcalEnabled + "\n" +
+                     "isSnEnabled = " + isSnEnabled + "\n" +
+                     "isMoniEnabled = " + isMoniEnabled);
+        }
     }
 
     public SecBuilderCompConfig(){
-        log.info("SBConfigComp parameters: \ngranularity = " + granularity +
-                "\nmaxCacheByte = " + maxCacheByte + "\nmaxAcquireBytes = " + maxAcquireBytes +
-                "\nisTcalEnabled = " + isTcalEnabled + "\nisSnEnabled = " + isSnEnabled +
-                "\nisMoniEnabled = " + isMoniEnabled);
+        if (log.isInfoEnabled()) {
+            log.info("SBConfigComp parameters: \n" +
+                     "granularity = " + granularity + "\n" +
+                     "maxCacheByte = " + maxCacheByte + "\n" +
+                     "maxAcquireBytes = " + maxAcquireBytes + "\n" +
+                     "isTcalEnabled = " + isTcalEnabled + "\n" +
+                     "isSnEnabled = " + isSnEnabled + "\n" +
+                     "isMoniEnabled = " + isMoniEnabled);
+        }
     }
 
     // TODO: This is to be decided
