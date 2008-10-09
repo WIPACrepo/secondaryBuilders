@@ -32,7 +32,7 @@ import org.apache.commons.logging.LogFactory;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 3395 2008-08-14 22:25:30Z dglo $
+ * @version $Id: SBComponent.java 3569 2008-10-09 17:05:39Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -256,7 +256,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-	return "$Id: SBComponent.java 3395 2008-08-14 22:25:30Z dglo $";
+	return "$Id: SBComponent.java 3569 2008-10-09 17:05:39Z dglo $";
     }
 
 
@@ -268,6 +268,16 @@ public class SBComponent extends DAQComponent {
      */
     public static void main(String[] args) throws Exception
     {
-        new DAQCompServer(new SBComponent(new SecBuilderCompConfig()), args);
+        SecBuilderCompConfig cfg = new SecBuilderCompConfig();
+
+        DAQCompServer srvr;
+        try {
+            srvr = new DAQCompServer(new SBComponent(cfg), args);
+        } catch (IllegalArgumentException ex) {
+            System.err.println(ex.getMessage());
+            System.exit(1);
+            return; // without this, compiler whines about uninitialized 'srvr'
+        }
+        srvr.startServing();
     }
 }
