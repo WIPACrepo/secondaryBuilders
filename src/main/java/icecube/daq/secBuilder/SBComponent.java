@@ -47,7 +47,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 3672 2008-11-26 00:05:16Z ksb $
+ * @version $Id: SBComponent.java 4048 2009-04-08 05:48:59Z joanna $
  */
 public class SBComponent extends DAQComponent {
 
@@ -107,7 +107,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing TcalBuilder");
             }
             //tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
-            tcalBufferCache = new VitreousBufferCache();
+            tcalBufferCache = new VitreousBufferCache(250000000);
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             //addMBean("tcalCache", tcalBufferCache);
@@ -122,7 +122,7 @@ public class SBComponent extends DAQComponent {
             tcalSplicedAnalysis.setStreamName("tcal");
             try
             {
-                tcalInputEngine = new SpliceablePayloadReader("tcalInputEngine", 5000, tcalSplicer, tcalFactory);
+                tcalInputEngine = new SpliceablePayloadReader("tcalInputEngine", 25000, tcalSplicer, tcalFactory);
                 addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
 
                 if (isMonitoring){
@@ -146,7 +146,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing SNBuilder");
             }
             //snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
-            snBufferCache = new VitreousBufferCache();
+            snBufferCache = new VitreousBufferCache(250000000);
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             //addMBean("snCache", snBufferCache);
@@ -161,7 +161,7 @@ public class SBComponent extends DAQComponent {
             snSplicedAnalysis.setStreamName("sn");
             try
             {
-                snInputEngine = new SpliceablePayloadReader("stringHubSnInput", 10000, snSplicer, snFactory);
+                snInputEngine = new SpliceablePayloadReader("stringHubSnInput", 25000, snSplicer, snFactory);
                 addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
 
                 if (isMonitoring){
@@ -402,7 +402,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 3672 2008-11-26 00:05:16Z ksb $";
+        return "$Id: SBComponent.java 4048 2009-04-08 05:48:59Z joanna $";
     }
 
 
