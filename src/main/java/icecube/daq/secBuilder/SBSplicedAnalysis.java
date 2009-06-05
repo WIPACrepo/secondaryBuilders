@@ -183,17 +183,6 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     }
 
     /**
-     * Returns the {@link icecube.daq.splicer.SpliceableFactory} that should be used to create the
-     * {@link icecube.daq.splicer.Spliceable Spliceable} objects used by this
-     * object.
-     *
-     * @return the SpliceableFactory that creates Spliceable objects.
-     */
-    public SpliceableFactory getFactory() {
-        return spliceableFactory;
-    }
-
-    /**
      * Called when the {@link icecube.daq.splicer.Splicer Splicer} enters the disposed state.
      *
      * @param event the event encapsulating this state change.
