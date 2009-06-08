@@ -47,7 +47,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 4096 2009-04-21 12:53:54Z kael $
+ * @version $Id: SBComponent.java 4268 2009-06-08 16:50:49Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -107,7 +107,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing TcalBuilder");
             }
             //tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
-            tcalBufferCache = new VitreousBufferCache(350000000);
+            tcalBufferCache = new VitreousBufferCache("SBTCal", 350000000);
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             //addMBean("tcalCache", tcalBufferCache);
@@ -146,7 +146,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing SNBuilder");
             }
             //snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
-            snBufferCache = new VitreousBufferCache(250000000);
+            snBufferCache = new VitreousBufferCache("SBSN", 250000000);
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             //addMBean("snCache", snBufferCache);
@@ -184,7 +184,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing MoniBuilder");
             }
             //moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
-            moniBufferCache = new VitreousBufferCache();
+            moniBufferCache = new VitreousBufferCache("SBMoni");
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             //addMBean("moniCache", moniBufferCache);
@@ -402,7 +402,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 4096 2009-04-21 12:53:54Z kael $";
+        return "$Id: SBComponent.java 4268 2009-06-08 16:50:49Z dglo $";
     }
 
 
