@@ -14,12 +14,12 @@ import icecube.daq.juggler.component.DAQCompConfig;
  * secondary builders.
  */
 public interface SBCompConfig extends DAQCompConfig {
- 
-    public boolean isTcalEnabled();
 
-    public boolean isSnEnabled();
+    boolean isTcalEnabled();
 
-    public boolean isMoniEnabled();
+    boolean isSnEnabled();
 
-    public boolean isMonitoring();
+    boolean isMoniEnabled();
+
+    boolean isMonitoring();
 }

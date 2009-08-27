@@ -6,9 +6,9 @@
  */
 package icecube.daq.secBuilder;
 
-import icecube.daq.splicer.Splicer;
 import icecube.daq.io.DAQComponentInputProcessor;
 import icecube.daq.io.Dispatcher;
+import icecube.daq.splicer.Splicer;
 
 public class SecBuilderMonitor implements SecBuilderMonitorMBean {
 
@@ -44,39 +44,39 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean {
     /**
      * Get the type of data (i.e. tcal, sn, moni)
      * @return a String object
-     */ 
+     */
     public String getDataType(){
         return dataType;
     }
-    
+
     /**
      * Get the state of the input processor for the secondary builder
      * @return a String object
-     */ 
+     */
     public String getInputProcessorState(){
         return inputProcessor.getPresentState();
     }
-    
+
     /**
      * Get the state of the Splicer
      * @return a String object
-     */ 
+     */
     public String getSplicerState(){
         return splicer.getStateString();
     }
-    
+
     /**
      * Get the number of Strands connected to the input channels
      * @return an int value
-     */ 
+     */
     public int getStrandCount(){
         return splicer.getStrandCount();
     }
-    
+
     /**
      * Get the total of the dispatched data
      * @return a long value
-     */ 
+     */
     public long getTotalDispatchedData(){
         return dispatcher.getTotalDispatchedEvents();
     }
@@ -87,7 +87,7 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean {
      *
      * @return the number of units still available in the disk.
      */
-    public int getDiskAvailable(){
+    public long getDiskAvailable(){
         return dispatcher.getDiskAvailable();
     }
 
@@ -97,7 +97,7 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean {
      *
      * @return the total number of units in the disk.
      */
-    public int getDiskSize(){
+    public long getDiskSize(){
         return dispatcher.getDiskSize();
     }
 }

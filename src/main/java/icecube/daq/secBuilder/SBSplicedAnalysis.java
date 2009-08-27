@@ -6,17 +6,23 @@
  */
 package icecube.daq.secBuilder;
 
-import icecube.daq.splicer.*;
-import icecube.daq.payload.splicer.Payload;
-import icecube.daq.io.Dispatcher;
-import icecube.daq.io.DispatchException;
 import icecube.daq.common.DAQCmdInterface;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import icecube.daq.io.DispatchException;
+import icecube.daq.io.Dispatcher;
+import icecube.daq.payload.splicer.Payload;
+import icecube.daq.splicer.Spliceable;
+import icecube.daq.splicer.SpliceableFactory;
+import icecube.daq.splicer.SplicedAnalysis;
+import icecube.daq.splicer.Splicer;
+import icecube.daq.splicer.SplicerChangedEvent;
+import icecube.daq.splicer.SplicerListener;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Iterator;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * This is the the SplicedAnalysis that can be used with
@@ -30,11 +36,14 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     private SpliceableFactory spliceableFactory;
     private Dispatcher dispatcher;
     private Splicer splicer;
-    private SecBuilderMonitor secBuilderMonitor;
     private int start;
     private int lastInputListSize;
     private int runNumber;
     private boolean reportedError;
+    private String streamName = "noname";
+    private boolean preScaling = false; // If we are prescaling
+    private long preScale = 1;          // Current prescale value
+    private long preScaleCount = 1;     // Current count of discarded events
 
     private Log log = LogFactory.getLog(SBSplicedAnalysis.class);
 
@@ -67,10 +76,10 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
         lastInputListSize = numberOfObjectsInSplicer - (start - decrement);
 
         if (log.isDebugEnabled()) {
-            log.debug("Splicer contains: [" + lastInputListSize + ":" + numberOfObjectsInSplicer + "]");
+            log.debug("Splicer " + streamName + " contains: [" + lastInputListSize + ":" + numberOfObjectsInSplicer + "]");
         }
 
-        for (int index = start - decrement; numberOfObjectsInSplicer != index; index++) {
+        for (int index = start - decrement; index < numberOfObjectsInSplicer; index++) {
 
             Payload payload = (Payload) splicedObjects.get(index);
             ByteBuffer buf  = payload.getPayloadBacking();
@@ -80,17 +89,17 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
                 int recl = buf.getInt(0);
                 int limit = buf.limit();
                 int capacity = buf.capacity();
-                log.debug("Writing byte buffer - RECL=" 
+                log.debug("Writing " + streamName + " byte buffer - RECL="
                         + recl + " LIMIT="
                         + limit + " CAP="
                         + capacity
                         );
             }
             try {
-                dispatcher.dispatchEvent(buf);
+                dispatchEvent(buf);
             } catch (DispatchException de) {
                 if (log.isErrorEnabled() && !reportedError) {
-                    log.error("couldn't dispatch the payload: ", de);
+                    log.error("couldn't dispatch the " + streamName + " payload: ", de);
                     reportedError = true;
                 }
             }
@@ -103,7 +112,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
             Spliceable update = (Spliceable) splicedObjects.get(start - 1);
             if (null != update) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Truncating splicer: " + update);
+                    log.debug("Truncating " + streamName + " splicer: " + update);
                 }
                 splicer.truncate(update);
             }
@@ -111,14 +120,66 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     }
 
     /**
-     * Returns the {@link icecube.daq.splicer.SpliceableFactory} that should be used to create the
-     * {@link icecube.daq.splicer.Spliceable Spliceable} objects used by this
-     * object.
+     * Set the prescale factor - let through only every 'preScale'
+     * events (default=1)
      *
-     * @return the SpliceableFactory that creates Spliceable objects.
+     * @param preScale the number of events to discard between letting
+     * one through.
      */
-    public SpliceableFactory getFactory() {
-        return spliceableFactory;
+    void setPreScale(long preScale) {
+        if (preScale <= 0L) {
+            throw new IllegalArgumentException("Bad "+ streamName + " prescale value: " +
+                                               preScale);
+        }
+        // preScale is now >= 1
+
+        if (log.isInfoEnabled()) {
+            log.info("Setting "+ streamName + " prescale to " + preScale);
+        }
+
+        // Setting to 1 => turning off preScaling
+        this.preScaling = (preScale > 1);
+        this.preScale = preScale;
+        this.preScaleCount = 1;
+    }
+
+
+    /**
+     * Dispatch an event taking into account any prescale settings
+     * (meaning it might not dispatch it).
+     *
+     * @param buffer the ByteBuffer containg the event.
+     * @throws DispatchException is there is a problem in the Dispatch system.
+     */
+    private void dispatchEvent(ByteBuffer buf) throws DispatchException {
+
+        if(preScaling) {
+            if (preScaleCount < preScale) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Discarding "+ streamName + " prescaled event " + preScaleCount + " out of " +
+                              preScale);
+                }
+                preScaleCount++;
+                return; // Nothin to do here folks, move along...
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("Resetting "+ streamName + " prescale count, dispatching event.");
+                }
+                preScaleCount = 1;
+            }
+        }
+
+        dispatcher.dispatchEvent(buf);
+    }
+
+
+    /**
+     * Set the name of the secondary builder stream for this spliced analysis engine.
+     *
+     * @param name - the name of the stream
+     */
+    void setStreamName(String streamName) {
+        this.streamName = streamName;
     }
 
     /**
@@ -128,7 +189,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
      */
     public void disposed(SplicerChangedEvent event) {
         if (log.isInfoEnabled()) {
-            log.info("Splicer entered DISPOSED state");
+            log.info("Splicer " + streamName + " entered DISPOSED state");
         }
     }
 
@@ -139,7 +200,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
      */
     public void failed(SplicerChangedEvent event) {
         if (log.isInfoEnabled()) {
-            log.info("Splicer entered FAILED state");
+            log.info("Splicer " + streamName + " entered FAILED state");
         }
     }
 
@@ -154,11 +215,11 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
             dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTART_FLAG +
                     runNumber);
             if (log.isInfoEnabled()) {
-                log.info("entered starting state and calling dispatcher.dataBoundary()");
+                log.info("entered " + streamName + " starting state and calling dispatcher.dataBoundary()");
             }
         } catch (DispatchException de) {
             if (log.isErrorEnabled()) {
-                log.error("failed on dispatcher.dataBoundary(): ", de);
+                log.error("failed on " + streamName + " dispatcher.dataBoundary(): ", de);
             }
         }
     }
@@ -170,7 +231,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
      */
     public void started(SplicerChangedEvent event) {
         if (log.isInfoEnabled()) {
-            log.info("Splicer entered STARTED state");
+            log.info("Splicer " + streamName + " entered STARTED state");
         }
     }
 
@@ -184,16 +245,16 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
             dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTOP_FLAG +
                     runNumber);
             if (log.isInfoEnabled()) {
-                log.info("entered stopped state and calling dispatcher.dataBoundary()");
+                log.info("entered " + streamName + " stopped state and calling dispatcher.dataBoundary()");
             }
         } catch (DispatchException de) {
             if (log.isErrorEnabled()) {
-                log.error("failed on dispatcher.dataBoundary(): ", de);
+                log.error("failed on " + streamName + " dispatcher.dataBoundary(): ", de);
             }
         }
         // tell manager that we have stopped
         if (log.isInfoEnabled()) {
-            log.info("entered stopped state. Splicer state is: " +
+            log.info("entered stopped state. Splicer " + streamName + " state is: " +
                     splicer.getState() + ": " +
                     splicer.getStateString());
         }
@@ -206,7 +267,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
      */
     public void stopping(SplicerChangedEvent event) {
         if (log.isInfoEnabled()) {
-            log.info("Splicer entered STOPPING state");
+            log.info("Splicer " + streamName + " entered STOPPING state");
         }
     }
 
@@ -222,13 +283,13 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
      */
     public void truncated(SplicerChangedEvent event) {
         if (log.isDebugEnabled()) {
-            log.debug("Splicer truncated: " + event.getSpliceable());
+            log.debug("Splicer " + streamName + " truncated: " + event.getSpliceable());
         }
         Iterator iter = event.getAllSpliceables().iterator();
         while (iter.hasNext()) {
             Payload payload = (Payload) iter.next();
             if (log.isDebugEnabled()) {
-                log.debug("Recycle payload " + payload);
+                log.debug("Recycle " + streamName + " payload " + payload);
             }
             // reduce memory commitment to splicer
             payload.recycle();
@@ -238,8 +299,8 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     // set the splicer and add this listener to the splicer
     public void setSplicer(Splicer splicer) {
         if (splicer == null) {
-            log.error("Splicer cannot be null");
-            throw new IllegalArgumentException("Splicer cannot be null");
+            log.error("Splicer " + streamName + " cannot be null");
+            throw new IllegalArgumentException("Splicer " + streamName + " cannot be null");
         }
         this.splicer = splicer;
         this.splicer.addSplicerListener(this);
