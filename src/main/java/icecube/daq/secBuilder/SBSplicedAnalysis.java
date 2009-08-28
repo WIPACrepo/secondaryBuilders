@@ -9,7 +9,8 @@ package icecube.daq.secBuilder;
 import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
-import icecube.daq.payload.splicer.Payload;
+import icecube.daq.payload.ILoadablePayload;
+import icecube.daq.payload.IPayload;
 import icecube.daq.splicer.Spliceable;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.SplicedAnalysis;
@@ -81,7 +82,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
 
         for (int index = start - decrement; index < numberOfObjectsInSplicer; index++) {
 
-            Payload payload = (Payload) splicedObjects.get(index);
+            IPayload payload = (IPayload) splicedObjects.get(index);
             ByteBuffer buf  = payload.getPayloadBacking();
             buf.limit(buf.getInt(0));
             if (log.isDebugEnabled())
@@ -287,7 +288,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
         }
         Iterator iter = event.getAllSpliceables().iterator();
         while (iter.hasNext()) {
-            Payload payload = (Payload) iter.next();
+            ILoadablePayload payload = (ILoadablePayload) iter.next();
             if (log.isDebugEnabled()) {
                 log.debug("Recycle " + streamName + " payload " + payload);
             }

@@ -17,9 +17,9 @@ import icecube.daq.juggler.component.DAQComponent;
 import icecube.daq.juggler.component.DAQConnector;
 import icecube.daq.juggler.mbean.MemoryStatistics;
 import icecube.daq.juggler.mbean.SystemStatistics;
+import icecube.daq.payload.impl.PayloadFactory;
 import icecube.daq.payload.IByteBufferCache;
-import icecube.daq.payload.MasterPayloadFactory;
-import icecube.daq.payload.VitreousBufferCache;
+import icecube.daq.payload.impl.VitreousBufferCache;
 import icecube.daq.splicer.HKN1Splicer;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Splicer;
@@ -47,7 +47,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 4268 2009-06-08 16:50:49Z dglo $
+ * @version $Id: SBComponent.java 4574 2009-08-28 21:32:32Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -111,7 +111,7 @@ public class SBComponent extends DAQComponent {
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             //addMBean("tcalCache", tcalBufferCache);
-            tcalFactory = new MasterPayloadFactory(tcalBufferCache);
+            tcalFactory = new PayloadFactory(tcalBufferCache);
             tcalSplicedAnalysis = new SBSplicedAnalysis(tcalFactory,
                     tcalDispatcher,
                     tcalBuilderMonitor);
@@ -150,7 +150,7 @@ public class SBComponent extends DAQComponent {
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             //addMBean("snCache", snBufferCache);
-            snFactory = new MasterPayloadFactory(snBufferCache);
+            snFactory = new PayloadFactory(snBufferCache);
             snSplicedAnalysis = new SBSplicedAnalysis(snFactory,
                     snDispatcher,
                     snBuilderMonitor);
@@ -188,7 +188,7 @@ public class SBComponent extends DAQComponent {
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             //addMBean("moniCache", moniBufferCache);
-            moniFactory = new MasterPayloadFactory(moniBufferCache);
+            moniFactory = new PayloadFactory(moniBufferCache);
             moniSplicedAnalysis = new SBSplicedAnalysis(moniFactory,
                     moniDispatcher,
                     moniBuilderMonitor);
@@ -402,7 +402,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 4268 2009-06-08 16:50:49Z dglo $";
+        return "$Id: SBComponent.java 4574 2009-08-28 21:32:32Z dglo $";
     }
 
 
