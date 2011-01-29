@@ -47,7 +47,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 12609 2011-01-29 00:30:13Z dglo $
+ * @version $Id: SBComponent.java 12610 2011-01-29 00:31:23Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -184,7 +184,7 @@ public class SBComponent extends DAQComponent {
                 log.info("Constructing MoniBuilder");
             }
             //moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
-            moniBufferCache = new VitreousBufferCache("SBMoni");
+            moniBufferCache = new VitreousBufferCache("SBMoni", 350000000);
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             //addMBean("moniCache", moniBufferCache);
@@ -402,7 +402,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 12609 2011-01-29 00:30:13Z dglo $";
+        return "$Id: SBComponent.java 12610 2011-01-29 00:31:23Z dglo $";
     }
 
 
