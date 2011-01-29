@@ -47,7 +47,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 4574 2009-08-28 21:32:32Z dglo $
+ * @version $Id: SBComponent.java 12609 2011-01-29 00:30:13Z dglo $
  */
 public class SBComponent extends DAQComponent {
 
@@ -310,7 +310,7 @@ public class SBComponent extends DAQComponent {
             throw new DAQCompException(ex);
         } catch (XPathExpressionException ex) {
             throw new DAQCompException(ex);
-        } 
+        }
 
     }
 
@@ -329,7 +329,7 @@ public class SBComponent extends DAQComponent {
         throws XPathExpressionException, DAQCompException {
 
         String prescale_expr = "stream[@name='" + stream + "']/prescale";
-        
+
         String prescale = (String) xpath.evaluate(prescale_expr, sbNode,
                                                   XPathConstants.STRING);
         if(prescale.length() == 0) {
@@ -402,7 +402,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 4574 2009-08-28 21:32:32Z dglo $";
+        return "$Id: SBComponent.java 12609 2011-01-29 00:30:13Z dglo $";
     }
 
 
