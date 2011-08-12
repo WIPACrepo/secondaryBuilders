@@ -6,7 +6,6 @@
  */
 package icecube.daq.secBuilder;
 
-import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.payload.ILoadablePayload;
@@ -213,8 +212,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
     public void starting(SplicerChangedEvent event) {
         try {
             // insert data boundary at begin of run
-            dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTART_FLAG +
-                    runNumber);
+            dispatcher.dataBoundary(Dispatcher.START_PREFIX + runNumber);
             if (log.isInfoEnabled()) {
                 log.info("entered " + streamName + " starting state and calling dispatcher.dataBoundary()");
             }
@@ -243,8 +241,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener {
      */
     public void stopped(SplicerChangedEvent event) {
         try {
-            dispatcher.dataBoundary(DAQCmdInterface.DAQ_ONLINE_RUNSTOP_FLAG +
-                    runNumber);
+            dispatcher.dataBoundary(Dispatcher.STOP_PREFIX + runNumber);
             if (log.isInfoEnabled()) {
                 log.info("entered " + streamName + " stopped state and calling dispatcher.dataBoundary()");
             }
