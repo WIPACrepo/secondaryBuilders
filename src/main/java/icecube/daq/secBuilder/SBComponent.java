@@ -47,9 +47,10 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 12610 2011-01-29 00:31:23Z dglo $
+ * @version $Id: SBComponent.java 13348 2011-09-09 19:41:43Z seshadrivija $
  */
-public class SBComponent extends DAQComponent {
+public class SBComponent extends DAQComponent 
+{
 
     private Log log = LogFactory.getLog(SBComponent.class);
 
@@ -87,12 +88,14 @@ public class SBComponent extends DAQComponent {
     private boolean isSnEnabled;
     private boolean isMoniEnabled;
 
-    private static final String COMP_NAME = DAQCmdInterface.DAQ_SECONDARY_BUILDERS;
+    private static final String COMP_NAME = 
+        DAQCmdInterface.DAQ_SECONDARY_BUILDERS;
     private static final int COMP_ID = 0;
 
     private String configDirName;
 
-    public SBComponent(SBCompConfig compConfig) {
+    public SBComponent(SBCompConfig compConfig) 
+    {
         super(COMP_NAME, COMP_ID);
         this.compConfig = compConfig;
 
@@ -103,7 +106,7 @@ public class SBComponent extends DAQComponent {
 
         // init tcalBuilder classes
         if (isTcalEnabled) {
-            if (log.isInfoEnabled()){
+            if (log.isInfoEnabled()) {
                 log.info("Constructing TcalBuilder");
             }
             //tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
@@ -120,19 +123,18 @@ public class SBComponent extends DAQComponent {
 
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
             tcalSplicedAnalysis.setStreamName("tcal");
-            try
-            {
-                tcalInputEngine = new SpliceablePayloadReader("tcalInputEngine", 50000, tcalSplicer, tcalFactory);
-                addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, tcalInputEngine);
+            try {
+                tcalInputEngine = new SpliceablePayloadReader(
+                    "tcalInputEngine", 50000, tcalSplicer, tcalFactory);
+                addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA, 
+                    tcalInputEngine);
 
-                if (isMonitoring){
-                    tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", tcalInputEngine,
-                            tcalSplicer, tcalDispatcher);
+                if (isMonitoring) {
+                    tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder", 
+                        tcalInputEngine, tcalSplicer, tcalDispatcher);
                     addMBean("tcalBuilder", tcalBuilderMonitor);
                 }
-            }
-            catch (IOException iox)
-            {
+            } catch (IOException iox) {
                 // TODO - this is going to be hidden unless the
                 // operator starts up in verbose mode.  Fix.
                 log.error(iox);
@@ -142,7 +144,7 @@ public class SBComponent extends DAQComponent {
 
         // init snBuilder
         if (isSnEnabled) {
-            if (log.isInfoEnabled()){
+            if (log.isInfoEnabled()) {
                 log.info("Constructing SNBuilder");
             }
             //snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
@@ -159,19 +161,17 @@ public class SBComponent extends DAQComponent {
 
             snSplicedAnalysis.setSplicer(snSplicer);
             snSplicedAnalysis.setStreamName("sn");
-            try
-            {
-                snInputEngine = new SpliceablePayloadReader("stringHubSnInput", 25000, snSplicer, snFactory);
+            try {
+                snInputEngine = new SpliceablePayloadReader("stringHubSnInput",
+                    25000, snSplicer, snFactory);
                 addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
 
-                if (isMonitoring){
-                    snBuilderMonitor = new SecBuilderMonitor("SnBuilder", snInputEngine,
-                            snSplicer, snDispatcher);
+                if (isMonitoring) {
+                    snBuilderMonitor = new SecBuilderMonitor("SnBuilder", 
+                        snInputEngine, snSplicer, snDispatcher);
                     addMBean("snBuilder", snBuilderMonitor);
                 }
-            }
-            catch (IOException iox)
-            {
+            } catch (IOException iox) {
                 // TODO see tcal comment
                 log.error(iox);
                 System.exit(1);
@@ -180,7 +180,7 @@ public class SBComponent extends DAQComponent {
 
         // init moniBuilder classes
         if (isMoniEnabled) {
-            if (log.isInfoEnabled()){
+            if (log.isInfoEnabled()) {
                 log.info("Constructing MoniBuilder");
             }
             //moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
@@ -197,19 +197,18 @@ public class SBComponent extends DAQComponent {
 
             moniSplicedAnalysis.setSplicer(moniSplicer);
             moniSplicedAnalysis.setStreamName("moni");
-            try
-            {
-                moniInputEngine = new SpliceablePayloadReader("stringHubMoniInput", 5000, moniSplicer, moniFactory);
-                addMonitoredEngine(DAQConnector.TYPE_MONI_DATA, moniInputEngine);
+            try {
+                moniInputEngine = new SpliceablePayloadReader(
+                    "stringHubMoniInput", 5000, moniSplicer, moniFactory);
+                addMonitoredEngine(DAQConnector.TYPE_MONI_DATA, 
+                    moniInputEngine);
 
-                if (isMonitoring){
-                    moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder", moniInputEngine,
-                            moniSplicer, moniDispatcher);
+                if (isMonitoring) {
+                    moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder",
+                        moniInputEngine, moniSplicer, moniDispatcher);
                     addMBean("moniBuilder", moniBuilderMonitor);
                 }
-            }
-            catch (IOException iox)
-            {
+            } catch (IOException iox) {
                 log.error(iox);
                 System.exit(1);
             }
@@ -264,7 +263,8 @@ public class SBComponent extends DAQComponent {
      * @param runConfigFileName - the run config filename to parse.
      */
     private void parseConfigFile(String runConfigFileName)
-        throws DAQCompException {
+        throws DAQCompException 
+    {
 
         try {
             Document doc = DocumentBuilderFactory.newInstance().
@@ -272,32 +272,34 @@ public class SBComponent extends DAQComponent {
 
             XPath xpath = XPathFactory.newInstance().newXPath();
 
-            String sb_expr = "/runConfig/runComponent[@name='secondaryBuilders']";
-            NodeList sbNodes = (NodeList) xpath.evaluate(sb_expr, doc, XPathConstants.NODESET);
-            if(sbNodes.getLength() != 1) {
+            String sb_expr = 
+                "/runConfig/runComponent[@name='secondaryBuilders']";
+            NodeList sbNodes = (NodeList) xpath.evaluate(sb_expr, doc, 
+                XPathConstants.NODESET);
+            if (sbNodes.getLength() != 1) {
                 throw new DAQCompException("Found " + sbNodes.getLength() +
-                                           " secondaryBuilder runComponents rather than 1 in " +
-                                           runConfigFileName);
+                     " secondaryBuilder runComponents rather than 1 in " +
+                          runConfigFileName);
             }
             Node sbNode = sbNodes.item(0);
 
             if (isTcalEnabled) {
                 Long tcal_prescale = parsePrescale("tcal", sbNode, xpath);
-                if(tcal_prescale != null) {
+                if (tcal_prescale != null) {
                     tcalSplicedAnalysis.setPreScale(tcal_prescale);
                 }
             }
 
             if (isSnEnabled) {
                 Long sn_prescale = parsePrescale("sn", sbNode, xpath);
-                if(sn_prescale != null) {
+                if (sn_prescale != null) {
                     snSplicedAnalysis.setPreScale(sn_prescale);
                 }
             }
 
             if (isMoniEnabled) {
                 Long moni_prescale = parsePrescale("moni", sbNode, xpath);
-                if(moni_prescale != null) {
+                if (moni_prescale != null) {
                     moniSplicedAnalysis.setPreScale(moni_prescale);
                 }
             }
@@ -326,13 +328,14 @@ public class SBComponent extends DAQComponent {
      * @return the prescale value as a Long or null if not specified.
      */
     private Long parsePrescale(String stream, Node sbNode, XPath xpath)
-        throws XPathExpressionException, DAQCompException {
+        throws XPathExpressionException, DAQCompException 
+    {
 
         String prescale_expr = "stream[@name='" + stream + "']/prescale";
 
         String prescale = (String) xpath.evaluate(prescale_expr, sbNode,
                                                   XPathConstants.STRING);
-        if(prescale.length() == 0) {
+        if (prescale.length() == 0) {
             return null;
         }
 
@@ -345,8 +348,9 @@ public class SBComponent extends DAQComponent {
         return ps;
     }
 
-    public void setRunNumber(int runNumber) {
-        if (log.isInfoEnabled()){
+    public void setRunNumber(int runNumber) 
+    {
+        if (log.isInfoEnabled()) {
             log.info("Setting runNumber = " + runNumber);
         }
         if (isTcalEnabled) {
@@ -363,16 +367,18 @@ public class SBComponent extends DAQComponent {
     /**
      * Set the destination directory where the dispatch files will be saved.
      *
-     * @param dirName The absolute path of directory where the dispatch files will be stored.
+     * @param dirName The absolute path of directory where the dispatch 
+     * files will be stored.
      */
-    public void setDispatchDestStorage(String dirName) {
-        if (isTcalEnabled){
+    public void setDispatchDestStorage(String dirName) 
+    {
+        if (isTcalEnabled) {
             tcalDispatcher.setDispatchDestStorage(dirName);
         }
-        if (isSnEnabled){
+        if (isSnEnabled) {
             snDispatcher.setDispatchDestStorage(dirName);
         }
-        if (isMoniEnabled){
+        if (isMoniEnabled) {
             moniDispatcher.setDispatchDestStorage(dirName);
         }
     }
@@ -382,14 +388,15 @@ public class SBComponent extends DAQComponent {
      *
      * @param maxFileSize the maximum size of the dispatch file.
      */
-    public void setMaxFileSize(long maxFileSize) {
-        if (isTcalEnabled){
+    public void setMaxFileSize(long maxFileSize) 
+    {
+        if (isTcalEnabled) {
             tcalDispatcher.setMaxFileSize(maxFileSize);
         }
-        if (isSnEnabled){
+        if (isSnEnabled) {
             snDispatcher.setMaxFileSize(maxFileSize);
         }
-        if (isMoniEnabled){
+        if (isMoniEnabled) {
             moniDispatcher.setMaxFileSize(maxFileSize);
         }
     }
@@ -402,7 +409,7 @@ public class SBComponent extends DAQComponent {
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 12610 2011-01-29 00:31:23Z dglo $";
+        return "$Id: SBComponent.java 13348 2011-09-09 19:41:43Z seshadrivija $";
     }
 
 
@@ -422,7 +429,7 @@ public class SBComponent extends DAQComponent {
         } catch (IllegalArgumentException ex) {
             System.err.println(ex.getMessage());
             System.exit(1);
-            return; // without this, compiler whines about uninitialized 'srvr'
+            return; 
         }
         srvr.startServing();
     }

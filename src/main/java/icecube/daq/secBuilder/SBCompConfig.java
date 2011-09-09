@@ -13,7 +13,8 @@ import icecube.daq.juggler.component.DAQCompConfig;
  * This interface provides the config information for
  * secondary builders.
  */
-public interface SBCompConfig extends DAQCompConfig {
+public interface SBCompConfig extends DAQCompConfig 
+{
 
     boolean isTcalEnabled();
 
