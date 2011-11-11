@@ -3,7 +3,7 @@ package icecube.daq.secBuilder;
 /**
  * Provides the methods for monitoring the secondaryBuilders
  */
-public interface SecBuilderMonitorMBean 
+public interface SecBuilderMonitorMBean
 {
 
     /**

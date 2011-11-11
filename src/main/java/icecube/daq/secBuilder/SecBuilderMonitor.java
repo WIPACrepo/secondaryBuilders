@@ -10,7 +10,7 @@ import icecube.daq.io.DAQComponentInputProcessor;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.splicer.Splicer;
 
-public class SecBuilderMonitor implements SecBuilderMonitorMBean 
+public class SecBuilderMonitor implements SecBuilderMonitorMBean
 {
 
     private String dataType;
@@ -18,9 +18,9 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
     private Splicer splicer;
     private Dispatcher dispatcher;
 
-    public SecBuilderMonitor(String dataType, 
+    public SecBuilderMonitor(String dataType,
         DAQComponentInputProcessor inputProcessor,
-            Splicer splicer, Dispatcher dispatcher) 
+            Splicer splicer, Dispatcher dispatcher)
     {
 
         if (dataType == null) {
