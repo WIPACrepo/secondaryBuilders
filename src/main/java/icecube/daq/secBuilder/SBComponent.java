@@ -25,6 +25,7 @@ import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Splicer;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -47,10 +48,43 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 13400 2011-11-11 02:44:51Z dglo $
+ * @version $Id: SBComponent.java 13401 2011-11-11 04:23:13Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
+    /**
+     * Event totals for a run.
+     */
+    class SBRunData
+    {
+        private long numTCal;
+        private long numSN;
+        private long numMoni;
+
+        /**
+         * Create an object holding the event totals for a run.
+         *
+         * @param numTCal - number of time calibration events dispatched
+         * @param numSN - number of supernova events dispatched
+         * @param numMoni - number of monitoring events dispatched
+         */
+        SBRunData(long numTCal, long numSN, long numMoni)
+        {
+            this.numTCal = numTCal;
+            this.numSN = numSN;
+            this.numMoni = numMoni;
+        }
+
+        /**
+         * Return run data as an array of <tt>long</tt> values.
+         *
+         * @return array of <tt>long</tt> values
+         */
+        public long[] toArray()
+        {
+            return new long[] { numTCal, numSN, numMoni };
+        }
+    }
 
     private Log log = LogFactory.getLog(SBComponent.class);
 
@@ -93,6 +127,12 @@ public class SBComponent extends DAQComponent
     private static final int COMP_ID = 0;
 
     private String configDirName;
+
+    private int runNumber;
+
+    /** Map used to track event counts for each run */
+    private HashMap<Integer, SBRunData> runData =
+        new HashMap<Integer, SBRunData>();
 
     public SBComponent(SBCompConfig compConfig)
     {
@@ -254,7 +294,6 @@ public class SBComponent extends DAQComponent
         parseConfigFile(runConfigFileName);
     }
 
-
     /**
      * Parse the run config file looking for prescale values for each
      * stream, chaining exceptions, etc.
@@ -361,6 +400,8 @@ public class SBComponent extends DAQComponent
         if (isMoniEnabled) {
             moniSplicedAnalysis.setRunNumber(runNumber);
         }
+
+        this.runNumber = runNumber;
     }
 
     /**
@@ -400,7 +441,6 @@ public class SBComponent extends DAQComponent
         }
     }
 
-
     /**
      * Return this component's svn version id as a String.
      *
@@ -408,9 +448,84 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 13400 2011-11-11 02:44:51Z dglo $";
+        return "$Id: SBComponent.java 13401 2011-11-11 04:23:13Z dglo $";
     }
 
+    /**
+     * Save final event counts.
+     */
+    public void stopped()
+    {
+        runData.put(runNumber,
+                    new SBRunData(tcalDispatcher.getNumDispatchedEvents(),
+                                  snDispatcher.getNumDispatchedEvents(),
+                                  moniDispatcher.getNumDispatchedEvents()));
+    }
+
+    /**
+     * Perform any actions related to switching to a new run.
+     *
+     * @param runNumber new run number
+     *
+     * @throws DAQCompException if there is a problem switching the component
+     */
+    public void switching(int runNumber)
+        throws DAQCompException
+    {
+        long numTCal = 0;
+        long numSN = 0;
+        long numMoni = 0;
+
+        if (log.isInfoEnabled()){
+            log.info("Setting runNumber = " + runNumber);
+        }
+        if (isTcalEnabled) {
+            numTCal = tcalSplicedAnalysis.switchToNewRun(runNumber);
+        }
+        if (isSnEnabled) {
+            numSN = snSplicedAnalysis.switchToNewRun(runNumber);
+        }
+        if (isMoniEnabled) {
+            numMoni = moniSplicedAnalysis.switchToNewRun(runNumber);
+        }
+
+        // save run data for later retrieval
+        runData.put(this.runNumber,
+                    new SBRunData(numTCal, numSN, numMoni));
+
+        this.runNumber = runNumber;
+    }
+
+    /**
+     * Get the run data for the specified run.
+     *
+     * @return array of <tt>long</tt> values:<ol>
+     *    <li>number of time calibration events
+     *    <li>number of supernova events
+     *    <li>number of monitoring events
+     *    </ol>
+     */
+    public long[] getRunData(int runNum)
+        throws DAQCompException
+    {
+        if (!runData.containsKey(runNum)) {
+            throw new DAQCompException("No data found for run " + runNum);
+        }
+
+        return runData.get(runNum).toArray();
+    }
+
+    /**
+     * Save run counts after
+    /**
+     * Get the current run number.
+     *
+     * @return current run number
+     */
+    public int getRunNumber()
+    {
+        return runNumber;
+    }
 
     /**
      * Run a DAQ component server.

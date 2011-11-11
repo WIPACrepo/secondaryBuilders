@@ -180,7 +180,9 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
             }
         }
 
-        dispatcher.dispatchEvent(buf);
+        synchronized (dispatcher) {
+            dispatcher.dispatchEvent(buf);
+        }
     }
 
 
@@ -342,5 +344,33 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
     public void setRunNumber(int runNumber)
     {
         this.runNumber = runNumber;
+    }
+
+    /**
+     * Switch to a new run.
+     *
+     * @return number of events dispatched before the run was switched
+     *
+     * @param runNumber new run number
+     */
+    public long switchToNewRun(int runNumber) {
+        long numEvents = 0;
+        try {
+            synchronized (dispatcher) {
+                numEvents = dispatcher.getNumDispatchedEvents();
+                dispatcher.dataBoundary(Dispatcher.SWITCH_PREFIX + runNumber);
+                if (log.isInfoEnabled()) {
+                    log.info("switched " + streamName + " to run " +
+                             runNumber);
+                }
+                this.runNumber = runNumber;
+            }
+        } catch (DispatchException de) {
+            if (log.isErrorEnabled()) {
+                log.error("failed to switch " + streamName, de);
+            }
+        }
+
+        return numEvents;
     }
 }

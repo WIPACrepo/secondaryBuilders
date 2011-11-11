@@ -31,6 +31,12 @@ public interface SecBuilderMonitorMBean
     int getStrandCount();
 
     /**
+     * Get the amount of dispatched data for the current run
+     * @return a long value
+     */
+    long getNumDispatchedData();
+
+    /**
      * Get the total of the dispatched data
      * @return a long value
      */

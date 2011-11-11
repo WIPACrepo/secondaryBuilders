@@ -81,7 +81,16 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
     }
 
     /**
-     * Get the total of the dispatched data
+     * Get the amount of dispatched data for the current run
+     * @return a long value
+     */
+    public long getNumDispatchedData()
+    {
+        return dispatcher.getNumDispatchedEvents();
+    }
+
+    /**
+     * Get the total dispatched data since this component has started
      * @return a long value
      */
     public long getTotalDispatchedData()
