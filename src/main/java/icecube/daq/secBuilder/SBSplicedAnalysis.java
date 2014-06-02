@@ -8,10 +8,10 @@ package icecube.daq.secBuilder;
 
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
+import icecube.daq.juggler.alert.AlertException;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.splicer.Spliceable;
-import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.SplicedAnalysis;
 import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerChangedEvent;
@@ -34,7 +34,6 @@ import org.apache.commons.logging.LogFactory;
 public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
 {
 
-    private SpliceableFactory spliceableFactory;
     private Dispatcher dispatcher;
     private Splicer splicer;
     private int start;
@@ -48,16 +47,8 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
 
     private Log log = LogFactory.getLog(SBSplicedAnalysis.class);
 
-    public SBSplicedAnalysis(SpliceableFactory factory, Dispatcher dispatcher,
-                             SecBuilderMonitor secBuilderMonitor)
+    public SBSplicedAnalysis(Dispatcher dispatcher)
     {
-        if (factory == null) {
-            log.error("SpliceableFactory is null");
-            throw new IllegalArgumentException(
-                "SpliceableFactory cannot be null");
-        }
-        this.spliceableFactory = factory;
-
         if (dispatcher == null) {
             log.error("Dispatcher is null");
             throw new IllegalArgumentException("Dispatcher cannot be null");
@@ -87,10 +78,20 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
         for (int index = start - decrement; index < numberOfObjectsInSplicer;
             index++)
         {
-
+            // get the next payload
             IPayload payload = (IPayload) splicedObjects.get(index);
+
+            // gather data for monitoring messages
+            try {
+                gatherMonitoring(payload);
+            } catch (AlertException ae) {
+                log.error("Cannot process payload " + payload, ae);
+            }
+
+            // limit the byte buffer to the length specified in the header
             ByteBuffer buf  = payload.getPayloadBacking();
             buf.limit(buf.getInt(0));
+
             if (log.isDebugEnabled()) {
                 int recl = buf.getInt(0);
                 int limit = buf.limit();
@@ -101,6 +102,8 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
                         capacity
                 );
             }
+
+            // write out the payload
             try {
                 dispatchEvent(buf);
             } catch (DispatchException de) {
@@ -128,6 +131,19 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
     }
 
     /**
+     * Gather data for monitoring messages
+     *
+     * @param payload payload
+     *
+     * @throws AlertException if there is a problem
+     */
+    public void gatherMonitoring(IPayload payload)
+        throws AlertException
+    {
+        // override this method to do something with the payloads
+    }
+
+    /**
      * Set the prescale factor - let through only every 'preScale'
      * events (default=1)
      *
@@ -147,7 +163,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
         }
 
         // Setting to 1 => turning off preScaling
-        this.preScaling = (preScale > 1);
+        this.preScaling = preScale > 1;
         this.preScale = preScale;
         this.preScaleCount = 1;
     }
@@ -187,6 +203,14 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
 
 
     /**
+     * Send any cached monitoring data
+     */
+    public void finishMonitoring()
+    {
+        // do nothing
+    }
+
+    /**
      * Set the name of the secondary builder stream for this
      * spliced analysis engine.
      *
@@ -221,6 +245,16 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered FAILED state");
         }
+    }
+
+    /**
+     * Get the current run number
+     *
+     * @return current run number
+     */
+    public int getRunNumber()
+    {
+        return runNumber;
     }
 
     /**
@@ -341,6 +375,11 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
         this.splicer.addSplicerListener(this);
     }
 
+    /**
+     * Set the run number
+     *
+     * @param runNumber current run number
+     */
     public void setRunNumber(int runNumber)
     {
         this.runNumber = runNumber;
@@ -357,6 +396,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
         long numEvents = 0;
         try {
             synchronized (dispatcher) {
+                finishMonitoring();
                 numEvents = dispatcher.getNumDispatchedEvents();
                 dispatcher.dataBoundary(Dispatcher.SWITCH_PREFIX + runNumber);
                 if (log.isInfoEnabled()) {

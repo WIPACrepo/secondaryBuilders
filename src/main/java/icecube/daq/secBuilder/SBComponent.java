@@ -48,7 +48,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 13401 2011-11-11 04:23:13Z dglo $
+ * @version $Id: SBComponent.java 15015 2014-06-02 16:24:13Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -86,13 +86,11 @@ public class SBComponent extends DAQComponent
         }
     }
 
-    private Log log = LogFactory.getLog(SBComponent.class);
+    private static final Log log = LogFactory.getLog(SBComponent.class);
 
     private IByteBufferCache tcalBufferCache;
     private IByteBufferCache snBufferCache;
     private IByteBufferCache moniBufferCache;
-
-    private SBCompConfig compConfig;
 
     private SpliceableFactory tcalFactory;
     private SpliceableFactory snFactory;
@@ -104,7 +102,7 @@ public class SBComponent extends DAQComponent
 
     private SBSplicedAnalysis tcalSplicedAnalysis;
     private SBSplicedAnalysis snSplicedAnalysis;
-    private SBSplicedAnalysis moniSplicedAnalysis;
+    private MoniAnalysis moniSplicedAnalysis;
 
     private Dispatcher tcalDispatcher;
     private Dispatcher snDispatcher;
@@ -137,7 +135,6 @@ public class SBComponent extends DAQComponent
     public SBComponent(SBCompConfig compConfig)
     {
         super(COMP_NAME, COMP_ID);
-        this.compConfig = compConfig;
 
         boolean isMonitoring = compConfig.isMonitoring();
         isTcalEnabled = compConfig.isTcalEnabled();
@@ -149,15 +146,12 @@ public class SBComponent extends DAQComponent
             if (log.isInfoEnabled()) {
                 log.info("Constructing TcalBuilder");
             }
-            //tcalBuilderMonitor = new SecBuilderMonitor("TcalBuilder");
             tcalBufferCache = new VitreousBufferCache("SBTCal", 350000000);
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             //addMBean("tcalCache", tcalBufferCache);
             tcalFactory = new PayloadFactory(tcalBufferCache);
-            tcalSplicedAnalysis = new SBSplicedAnalysis(tcalFactory,
-                    tcalDispatcher,
-                    tcalBuilderMonitor);
+            tcalSplicedAnalysis = new TCalAnalysis(tcalDispatcher);
             tcalSplicer = new HKN1Splicer(tcalSplicedAnalysis);
             addSplicer(tcalSplicer);
 
@@ -187,15 +181,12 @@ public class SBComponent extends DAQComponent
             if (log.isInfoEnabled()) {
                 log.info("Constructing SNBuilder");
             }
-            //snBuilderMonitor = new SecBuilderMonitor("SNBuilder");
             snBufferCache = new VitreousBufferCache("SBSN", 250000000);
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             //addMBean("snCache", snBufferCache);
             snFactory = new PayloadFactory(snBufferCache);
-            snSplicedAnalysis = new SBSplicedAnalysis(snFactory,
-                    snDispatcher,
-                    snBuilderMonitor);
+            snSplicedAnalysis = new SBSplicedAnalysis(snDispatcher);
             snSplicer = new HKN1Splicer(snSplicedAnalysis);
             addSplicer(snSplicer);
 
@@ -223,15 +214,12 @@ public class SBComponent extends DAQComponent
             if (log.isInfoEnabled()) {
                 log.info("Constructing MoniBuilder");
             }
-            //moniBuilderMonitor = new SecBuilderMonitor("MoniBuilder");
             moniBufferCache = new VitreousBufferCache("SBMoni", 350000000);
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             //addMBean("moniCache", moniBufferCache);
             moniFactory = new PayloadFactory(moniBufferCache);
-            moniSplicedAnalysis = new SBSplicedAnalysis(moniFactory,
-                    moniDispatcher,
-                    moniBuilderMonitor);
+            moniSplicedAnalysis = new MoniAnalysis(moniDispatcher);
             moniSplicer = new HKN1Splicer(moniSplicedAnalysis);
             addSplicer(moniSplicer);
 
@@ -281,7 +269,7 @@ public class SBComponent extends DAQComponent
      */
     public void configuring(String configName) throws DAQCompException
     {
-        String runConfigFileName = configDirName + "/" + configName;;
+        String runConfigFileName = configDirName + "/" + configName;
 
         if (!configName.endsWith(".xml")) {
             runConfigFileName += ".xml";
@@ -322,22 +310,22 @@ public class SBComponent extends DAQComponent
             Node sbNode = sbNodes.item(0);
 
             if (isTcalEnabled) {
-                Long tcal_prescale = parsePrescale("tcal", sbNode, xpath);
-                if (tcal_prescale != null) {
+                long tcal_prescale = parsePrescale("tcal", sbNode, xpath);
+                if (tcal_prescale > 0L) {
                     tcalSplicedAnalysis.setPreScale(tcal_prescale);
                 }
             }
 
             if (isSnEnabled) {
-                Long sn_prescale = parsePrescale("sn", sbNode, xpath);
-                if (sn_prescale != null) {
+                long sn_prescale = parsePrescale("sn", sbNode, xpath);
+                if (sn_prescale > 0L) {
                     snSplicedAnalysis.setPreScale(sn_prescale);
                 }
             }
 
             if (isMoniEnabled) {
-                Long moni_prescale = parsePrescale("moni", sbNode, xpath);
-                if (moni_prescale != null) {
+                long moni_prescale = parsePrescale("moni", sbNode, xpath);
+                if (moni_prescale > 0L) {
                     moniSplicedAnalysis.setPreScale(moni_prescale);
                 }
             }
@@ -365,7 +353,7 @@ public class SBComponent extends DAQComponent
      *
      * @return the prescale value as a Long or null if not specified.
      */
-    private Long parsePrescale(String stream, Node sbNode, XPath xpath)
+    private long parsePrescale(String stream, Node sbNode, XPath xpath)
         throws XPathExpressionException, DAQCompException
     {
 
@@ -374,15 +362,21 @@ public class SBComponent extends DAQComponent
         String prescale = (String) xpath.evaluate(prescale_expr, sbNode,
                                                   XPathConstants.STRING);
         if (prescale.length() == 0) {
-            return null;
+            return Long.MIN_VALUE;
         }
 
-        long ps = 0L;
+        long ps;
         try {
             ps = Long.valueOf(prescale);
         } catch (NumberFormatException nfe) {
             throw new DAQCompException(nfe);
         }
+
+        if (ps <= 0L) {
+            throw new DAQCompException("Bad " + stream + " prescale \"" +
+                                       prescale + "\"");
+        }
+
         return ps;
     }
 
@@ -448,7 +442,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 13401 2011-11-11 04:23:13Z dglo $";
+        return "$Id: SBComponent.java 15015 2014-06-02 16:24:13Z dglo $";
     }
 
     /**
@@ -456,6 +450,10 @@ public class SBComponent extends DAQComponent
      */
     public void stopped()
     {
+        moniSplicedAnalysis.finishMonitoring();
+        snSplicedAnalysis.finishMonitoring();
+        tcalSplicedAnalysis.finishMonitoring();
+
         runData.put(runNumber,
                     new SBRunData(tcalDispatcher.getNumDispatchedEvents(),
                                   snDispatcher.getNumDispatchedEvents(),

@@ -67,12 +67,6 @@ public class SecBuilderCompConfig implements SBCompConfig
         }
     }
 
-    // TODO: This is to be decided
-    private SecBuilderCompConfig(String xmlFile)
-    {
-        log.error("THIS IS NOT IMPLEMENTED YET");
-    }
-
     public int getGranularity()
     {
         return granularity;
