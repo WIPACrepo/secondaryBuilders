@@ -23,6 +23,8 @@ import icecube.daq.payload.impl.VitreousBufferCache;
 import icecube.daq.splicer.HKN1Splicer;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Splicer;
+import icecube.daq.util.DOMRegistry;
+import icecube.daq.util.IDOMRegistry;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -48,7 +50,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15026 2014-06-04 20:43:11Z dglo $
+ * @version $Id: SBComponent.java 15027 2014-06-04 20:44:32Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -100,7 +102,7 @@ public class SBComponent extends DAQComponent
     private Splicer snSplicer;
     private Splicer moniSplicer;
 
-    private SBSplicedAnalysis tcalSplicedAnalysis;
+    private TCalAnalysis tcalSplicedAnalysis;
     private SBSplicedAnalysis snSplicedAnalysis;
     private MoniAnalysis moniSplicedAnalysis;
 
@@ -257,7 +259,27 @@ public class SBComponent extends DAQComponent
         if (LOG.isDebugEnabled()) {
             LOG.debug("Setting global config dir to: " + dirName);
         }
+
         configDirName = dirName;
+
+        IDOMRegistry domRegistry;
+        try {
+            domRegistry = DOMRegistry.loadRegistry(dirName);
+        } catch (ParserConfigurationException pce) {
+            LOG.error("Cannot load DOM registry", pce);
+            domRegistry = null;
+        } catch (SAXException se) {
+            LOG.error("Cannot load DOM registry", se);
+            domRegistry = null;
+        } catch (IOException ioe) {
+            LOG.error("Cannot load DOM registry", ioe);
+            domRegistry = null;
+        }
+
+        if (domRegistry != null) {
+            moniSplicedAnalysis.setDOMRegistry(domRegistry);
+            tcalSplicedAnalysis.setDOMRegistry(domRegistry);
+        }
     }
 
     /**
@@ -280,6 +302,9 @@ public class SBComponent extends DAQComponent
         }
 
         parseConfigFile(runConfigFileName);
+
+        moniSplicedAnalysis.setAlerter(getAlerter());
+        tcalSplicedAnalysis.setAlerter(getAlerter());
     }
 
     /**
@@ -442,7 +467,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15026 2014-06-04 20:43:11Z dglo $";
+        return "$Id: SBComponent.java 15027 2014-06-04 20:44:32Z dglo $";
     }
 
     /**
