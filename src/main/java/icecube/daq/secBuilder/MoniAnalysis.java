@@ -10,6 +10,7 @@ import icecube.daq.payload.PayloadException;
 import icecube.daq.payload.PayloadFormatException;
 import icecube.daq.payload.impl.ASCIIMonitor;
 import icecube.daq.payload.impl.HardwareMonitor;
+import icecube.daq.payload.impl.Monitor;
 import icecube.daq.payload.impl.UTCTime;
 import icecube.daq.util.IDOMRegistry;
 import icecube.daq.util.DeployedDOM;
@@ -253,7 +254,7 @@ public class MoniAnalysis
 
             dval.deadtimeTotal += deadtime;
             dval.deadtimeCount++;
-        } else {
+        } else if (!(payload instanceof Monitor)) {
             throw new MoniException("Saw non-Monitor payload " + payload);
         }
     }
