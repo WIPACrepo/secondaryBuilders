@@ -48,7 +48,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15015 2014-06-02 16:24:13Z dglo $
+ * @version $Id: SBComponent.java 15026 2014-06-04 20:43:11Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -86,7 +86,7 @@ public class SBComponent extends DAQComponent
         }
     }
 
-    private static final Log log = LogFactory.getLog(SBComponent.class);
+    private static final Log LOG = LogFactory.getLog(SBComponent.class);
 
     private IByteBufferCache tcalBufferCache;
     private IByteBufferCache snBufferCache;
@@ -143,8 +143,8 @@ public class SBComponent extends DAQComponent
 
         // init tcalBuilder classes
         if (isTcalEnabled) {
-            if (log.isInfoEnabled()) {
-                log.info("Constructing TcalBuilder");
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Constructing TcalBuilder");
             }
             tcalBufferCache = new VitreousBufferCache("SBTCal", 350000000);
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
@@ -171,15 +171,15 @@ public class SBComponent extends DAQComponent
             } catch (IOException iox) {
                 // TODO - this is going to be hidden unless the
                 // operator starts up in verbose mode.  Fix.
-                log.error(iox);
+                LOG.error(iox);
                 System.exit(1);
             }
         }
 
         // init snBuilder
         if (isSnEnabled) {
-            if (log.isInfoEnabled()) {
-                log.info("Constructing SNBuilder");
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Constructing SNBuilder");
             }
             snBufferCache = new VitreousBufferCache("SBSN", 250000000);
             snDispatcher = new FileDispatcher("sn", snBufferCache);
@@ -204,15 +204,15 @@ public class SBComponent extends DAQComponent
                 }
             } catch (IOException iox) {
                 // TODO see tcal comment
-                log.error(iox);
+                LOG.error(iox);
                 System.exit(1);
             }
         }
 
         // init moniBuilder classes
         if (isMoniEnabled) {
-            if (log.isInfoEnabled()) {
-                log.info("Constructing MoniBuilder");
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Constructing MoniBuilder");
             }
             moniBufferCache = new VitreousBufferCache("SBMoni", 350000000);
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
@@ -237,7 +237,7 @@ public class SBComponent extends DAQComponent
                     addMBean("moniBuilder", moniBuilderMonitor);
                 }
             } catch (IOException iox) {
-                log.error(iox);
+                LOG.error(iox);
                 System.exit(1);
             }
         }
@@ -254,8 +254,8 @@ public class SBComponent extends DAQComponent
      */
     public void setGlobalConfigurationDir(String dirName)
     {
-        if (log.isDebugEnabled()) {
-            log.debug("Setting global config dir to: " + dirName);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Setting global config dir to: " + dirName);
         }
         configDirName = dirName;
     }
@@ -275,8 +275,8 @@ public class SBComponent extends DAQComponent
             runConfigFileName += ".xml";
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("Configuring with config: " + runConfigFileName);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Configuring with config: " + runConfigFileName);
         }
 
         parseConfigFile(runConfigFileName);
@@ -382,8 +382,8 @@ public class SBComponent extends DAQComponent
 
     public void setRunNumber(int runNumber)
     {
-        if (log.isInfoEnabled()) {
-            log.info("Setting runNumber = " + runNumber);
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Setting runNumber = " + runNumber);
         }
         if (isTcalEnabled) {
             tcalSplicedAnalysis.setRunNumber(runNumber);
@@ -442,7 +442,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15015 2014-06-02 16:24:13Z dglo $";
+        return "$Id: SBComponent.java 15026 2014-06-04 20:43:11Z dglo $";
     }
 
     /**
@@ -474,8 +474,8 @@ public class SBComponent extends DAQComponent
         long numSN = 0;
         long numMoni = 0;
 
-        if (log.isInfoEnabled()){
-            log.info("Setting runNumber = " + runNumber);
+        if (LOG.isInfoEnabled()){
+            LOG.info("Setting runNumber = " + runNumber);
         }
         if (isTcalEnabled) {
             numTCal = tcalSplicedAnalysis.switchToNewRun(runNumber);
