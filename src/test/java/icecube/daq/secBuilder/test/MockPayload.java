@@ -3,7 +3,6 @@ package icecube.daq.secBuilder.test;
 import icecube.daq.payload.PayloadInterfaceRegistry;
 import icecube.daq.payload.IByteBufferCache;
 import icecube.daq.payload.ILoadablePayload;
-import icecube.daq.payload.IPayloadDestination;
 import icecube.daq.payload.IUTCTime;
 import icecube.daq.payload.IWriteablePayload;
 import icecube.daq.payload.PayloadFormatException;
@@ -108,12 +107,6 @@ public abstract class MockPayload
             throw new Error("Unknown exception type " +
                             ex.getClass().getName() + ": " + ex);
         }
-    }
-
-    public int writePayload(boolean writeLoaded, IPayloadDestination dest)
-        throws IOException
-    {
-        throw new Error("Unimplemented");
     }
 
     public int writePayload(boolean writeLoaded, int offset, ByteBuffer buf)
