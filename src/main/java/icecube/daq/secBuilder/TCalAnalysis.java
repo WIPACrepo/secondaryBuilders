@@ -153,6 +153,9 @@ public class TCalAnalysis
             alerter.send(TCAL_EXCEPTION_NAME, Alerter.Priority.SCP, valueMap);
         } catch (AlertException ae) {
             LOG.error("Cannot send " + TCAL_EXCEPTION_NAME, ae);
+        } catch (Throwable thr) {
+            LOG.error("Cannot send " + TCAL_EXCEPTION_NAME + " value " +
+                      valueMap, thr);
         }
     }
 

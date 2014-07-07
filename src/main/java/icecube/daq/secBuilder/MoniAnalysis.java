@@ -458,6 +458,8 @@ public class MoniAnalysis
             alerter.send(varname, Alerter.Priority.SCP, binEndTime, value);
         } catch (AlertException ae) {
             LOG.error("Cannot send " + varname, ae);
+        } catch (Throwable thr) {
+            LOG.error("Cannot send " + varname + " value " + value, thr);
         }
     }
 
