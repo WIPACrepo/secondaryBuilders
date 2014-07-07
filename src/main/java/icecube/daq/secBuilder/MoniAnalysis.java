@@ -387,8 +387,17 @@ public class MoniAnalysis
                 }
             }
 
-            double voltage = convertToVoltage((double) dv.power5VTotal /
-                                              (double) dv.power5VCount);
+            double voltage;
+            if (dv.power5VCount == 0) {
+                if (dv.power5VTotal > 0) {
+                    LOG.error("Found " + dv.power5VTotal +
+                              " total with 0 count for " + dv.getOmID());
+                }
+                voltage = 0.0;
+            } else {
+                voltage = convertToVoltage((double) dv.power5VTotal /
+                                           (double) dv.power5VCount);
+            }
             map.put(dv.getOmID(), voltage);
 
             dv.power5VTotal = 0;

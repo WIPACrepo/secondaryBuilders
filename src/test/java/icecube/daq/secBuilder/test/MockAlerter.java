@@ -1,5 +1,6 @@
 package icecube.daq.secBuilder.test;
 
+import com.google.gson.Gson;
 import icecube.daq.juggler.alert.AlertException;
 import icecube.daq.juggler.alert.Alerter;
 import icecube.daq.payload.IUTCTime;
@@ -180,6 +181,9 @@ public class MockAlerter
         if (!alerts.containsKey(varname)) {
             alerts.put(varname, new ArrayList<AlertData>());
         }
+
+        Gson gson = new Gson();
+        gson.toJson(alert);
 
         alerts.get(varname).add(alert);
     }
