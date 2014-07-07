@@ -1,9 +1,7 @@
 package icecube.daq.secBuilder;
 
-import icecube.daq.juggler.alert.AlertException;
-
 public class MoniException
-    extends AlertException
+    extends Exception
 {
     MoniException(String message)
     {

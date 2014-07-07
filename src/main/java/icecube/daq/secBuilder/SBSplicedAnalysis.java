@@ -84,8 +84,10 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
             // gather data for monitoring messages
             try {
                 gatherMonitoring(payload);
-            } catch (AlertException ae) {
-                log.error("Cannot process payload " + payload, ae);
+            } catch (MoniException me) {
+                log.error("Cannot process payload " + payload, me);
+            } catch (Throwable thr) {
+                log.error("Unexpected monitoring error from " + payload, thr);
             }
 
             // limit the byte buffer to the length specified in the header
@@ -135,10 +137,10 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      *
      * @param payload payload
      *
-     * @throws AlertException if there is a problem
+     * @throws MoniException if there is a problem
      */
     public void gatherMonitoring(IPayload payload)
-        throws AlertException
+        throws MoniException
     {
         // override this method to do something with the payloads
     }

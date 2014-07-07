@@ -79,9 +79,11 @@ public class TCalAnalysis
      * Gather data for monitoring messages
      *
      * @param payload payload
+     *
+     * @throws MoniException if there is a problem
      */
     public void gatherMonitoring(IPayload payload)
-        throws AlertException
+        throws MoniException
     {
         gatherMonitoring(payload, false);
     }
@@ -90,17 +92,19 @@ public class TCalAnalysis
      * Gather data for monitoring messages
      *
      * @param payload payload
+     *
+     * @throws MoniException if there is a problem
      */
     public void gatherMonitoring(IPayload payload, boolean verbose)
-        throws AlertException
+        throws MoniException
     {
         // make sure we've got everything we need
         if (domRegistry == null) {
             throw new TCalException("DOM registry has not been set");
         } else if (alerter == null) {
-            throw new AlertException("Alerter has not been set");
+            throw new MoniException("Alerter has not been set");
         } else if (!alerter.isActive()) {
-            throw new AlertException("Alerter " + alerter + " is not active");
+            throw new MoniException("Alerter " + alerter + " is not active");
         }
 
         // load the payload

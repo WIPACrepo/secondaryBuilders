@@ -451,7 +451,7 @@ public class TCalAnalysisTest
     }
 
     public void testValid()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
 
@@ -474,7 +474,7 @@ public class TCalAnalysisTest
     }
 
     public void testNoRegistry()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -496,7 +496,7 @@ public class TCalAnalysisTest
     }
 
     public void testNoAlerter()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -511,14 +511,14 @@ public class TCalAnalysisTest
         try {
             ta.gatherMonitoring(td.create());
             fail("Should not work without alerter");
-        } catch (AlertException ae) {
+        } catch (MoniException me) {
             assertEquals("Bad exception", "Alerter has not been set",
-                         ae.getMessage());
+                         me.getMessage());
         }
     }
 
     public void testInactiveAlerter()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -533,14 +533,14 @@ public class TCalAnalysisTest
         try {
             ta.gatherMonitoring(td.create());
             fail("Should not work without alerter");
-        } catch (AlertException ae) {
+        } catch (MoniException me) {
             assertEquals("Bad exception", "Alerter " + alerter +
-                         " is not active", ae.getMessage());
+                         " is not active", me.getMessage());
         }
     }
 
     public void testIOException()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -560,7 +560,7 @@ public class TCalAnalysisTest
     }
 
     public void testPayloadException()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -580,7 +580,7 @@ public class TCalAnalysisTest
     }
 
     public void testBadPayload()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -599,7 +599,7 @@ public class TCalAnalysisTest
     }
 
     public void testBadDOM()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -619,7 +619,7 @@ public class TCalAnalysisTest
     }
 
     public void testBadQuality()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -640,7 +640,7 @@ public class TCalAnalysisTest
     }
 
     public void testGPSString()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -661,7 +661,7 @@ public class TCalAnalysisTest
     }
 
     public void testHugeDORTX()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -681,7 +681,7 @@ public class TCalAnalysisTest
     }
 
     public void testHugeSync()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -701,7 +701,7 @@ public class TCalAnalysisTest
     }
 
     public void testInvalidGPSTime()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -722,7 +722,7 @@ public class TCalAnalysisTest
     }
 
     public void testModifiedGPSDiff()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -780,7 +780,7 @@ public class TCalAnalysisTest
     }
 
     public void testBadWaveform()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -803,7 +803,7 @@ public class TCalAnalysisTest
     }
 
     public void testBadRTrip()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 

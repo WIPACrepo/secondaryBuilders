@@ -215,8 +215,8 @@ public class MoniAnalysisTest
             for (IPayload pay : in) {
                 try {
                     ma.gatherMonitoring(pay);
-                } catch (AlertException ae) {
-                    ae.printStackTrace();
+                } catch (MoniException me) {
+                    me.printStackTrace();
                     continue;
                 }
             }
@@ -288,7 +288,7 @@ public class MoniAnalysisTest
     }
 
     public void testSimple()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
         ma.setDOMRegistry(buildDOMRegistry());
@@ -344,7 +344,7 @@ public class MoniAnalysisTest
     }
 
     public void testNoRegistry()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -361,7 +361,7 @@ public class MoniAnalysisTest
     }
 
     public void testNoAlerter()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -373,14 +373,14 @@ public class MoniAnalysisTest
         try {
             ma.gatherMonitoring(new MockMoniPayload(1234));
             fail("Should not work without alerter");
-        } catch (AlertException ae) {
+        } catch (MoniException me) {
             assertEquals("Bad exception", "Alerter has not been set",
-                         ae.getMessage());
+                         me.getMessage());
         }
     }
 
     public void testInactiveAlerter()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -392,14 +392,14 @@ public class MoniAnalysisTest
         try {
             ma.gatherMonitoring(new MockMoniPayload(1234));
             fail("Should not work without alerter");
-        } catch (AlertException ae) {
+        } catch (MoniException me) {
             assertEquals("Bad exception", "Alerter " + alerter +
-                         " is not active", ae.getMessage());
+                         " is not active", me.getMessage());
         }
     }
 
     public void testIOException()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -419,7 +419,7 @@ public class MoniAnalysisTest
     }
 
     public void testPayloadException()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -439,7 +439,7 @@ public class MoniAnalysisTest
     }
 
     public void testBadPayloadUTC()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -458,7 +458,7 @@ public class MoniAnalysisTest
     }
 
     public void testBadPayload()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 

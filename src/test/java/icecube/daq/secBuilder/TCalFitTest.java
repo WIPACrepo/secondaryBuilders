@@ -85,7 +85,7 @@ public class TCalFitTest
     }
 
     public void testCentroid()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -167,7 +167,7 @@ public class TCalFitTest
     }
 
     public void testCrossover()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -249,7 +249,7 @@ public class TCalFitTest
     }
 
     public void testThreshold()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
@@ -331,7 +331,7 @@ public class TCalFitTest
     }
 
     public void testIntercept()
-        throws AlertException, PayloadException
+        throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
