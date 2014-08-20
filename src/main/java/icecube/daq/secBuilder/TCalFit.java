@@ -409,8 +409,8 @@ class WaveformFitThreshold
      peak.
    */
     private static void lead_edge_2(short[] array, int l1, double av,
-                                    double lf, int lower[], int upper[],
-                                    double leadedge[])
+                                    double lf, int[] lower, int[] upper,
+                                    double[] leadedge)
     {
         int i, idelta, lpeak;
         double height,a,b,sum,weight;
@@ -483,7 +483,7 @@ class WaveformFitIntercept
     }
 
     private static void fit(int ndata, int[] xdata, double[] ydata,
-                            double slope[], double intercept[])
+                            double[] slope, double[] intercept)
     {
         int sumx=0,sumxx=0;
         double sumy=0,sumyy=0,sumxy=0;
@@ -503,8 +503,8 @@ class WaveformFitIntercept
 
     private static void lead_edge_3(short[] array, int l1, double av,
                                     int ndata, int threshold, int peakchan,
-                                    int lower[], int upper[],
-                                    double leadedge[])
+                                    int[] lower, int[] upper,
+                                    double[] leadedge)
     {
         int[] xdata = new int[8];
         double[] ydata = new double[8];

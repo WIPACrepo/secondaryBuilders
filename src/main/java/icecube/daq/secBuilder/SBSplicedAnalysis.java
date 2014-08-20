@@ -8,7 +8,6 @@ package icecube.daq.secBuilder;
 
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
-import icecube.daq.juggler.alert.AlertException;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.splicer.Spliceable;
