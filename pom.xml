@@ -9,7 +9,7 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>secondaryBuilders</artifactId>
   <packaging>jar</packaging>
-  <name>secondaryBuilders</name>
+  <name>Secondary builders</name>
   <description>The secondary builder sub-systems (tcal, moni, sn streams) of the Surface Data Acquisition system for the IceCube Project.</description>
 
   <scm>

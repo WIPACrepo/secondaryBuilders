@@ -1,8 +1,5 @@
 package icecube.daq.secBuilder;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 class WaveformStats
 {
     // the first NUM_SAMPLES samples are used to determine the baseline
@@ -538,8 +535,6 @@ class WaveformFitIntercept
  */
 public class TCalFit
 {
-    private static final Log LOG = LogFactory.getLog(SBComponent.class);
-
     public static boolean tcalfit(int tcalalg, boolean verbose, long dor_tx,
                                   long dor_rx, short[] dor_wf, long dom_rx,
                                   long dom_tx, short[] dom_wf, long[] domT0Ptr,

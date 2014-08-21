@@ -26,10 +26,6 @@ public class TCalAnalysis
 
     /** number of tcal cycles required in a ring buffer */
     private static final int TNIN = 3;
-    /** max number of tcal cycles stored in a ring buffer */
-    private static final int TNUM = 50;
-    /** max number of tcal cycles to advance past the last timestamp */
-    private static final int TADV = 40;
     /** number of the last tcal cycles used in the avg. roundtrip calc */
     private static final int INCT = 50;
     /** maximum allowed deviation (in rms) of the tcal roundtrip time */
@@ -243,10 +239,6 @@ public class TCalAnalysis
             }
         }
 
-        long[] domT0Ptr = new long[1];
-        long[] deltaPtr = new long[1];
-        long[] rtripPtr = new long[1];
-
         WaveformFit wfit =
             new WaveformFitCrossover(tcal.getDorTXTime(), tcal.getDorRXTime(),
                                      tcal.getDorWaveform(),
@@ -291,7 +283,7 @@ public class TCalAnalysis
         private int major;
         private int minor;
 
-        private int last; // last calibration index (last % TNUM)
+        private int last; // last calibration index
 
         private long gpsdordiff; // difference gps - dor time [0.1 ns]
         private long gpsdiffold; // difference gps - dor time [0.1 ns] history
