@@ -67,6 +67,11 @@
       <groupId>edu.wisc.icecube</groupId>
       <artifactId>juggler</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+    </dependency>
   </dependencies>
 
 </project>
