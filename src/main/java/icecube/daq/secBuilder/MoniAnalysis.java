@@ -64,6 +64,9 @@ public class MoniAnalysis
 
     private boolean sentHVSet;
 
+    private FastMoniHDF fastMoni;
+    private boolean noJHDFLib;
+
     public MoniAnalysis(Dispatcher dispatcher)
     {
         super(dispatcher);
@@ -83,6 +86,16 @@ public class MoniAnalysis
         return (double) reading * val5V;
     }
 
+    public boolean disableIceTopFastMoni()
+    {
+        if (fastMoni == null) {
+            return false;
+        }
+
+        noJHDFLib = true;
+        return true;
+    }
+
     /**
      * Find the DOM with the specified mainboard ID
      *
@@ -90,10 +103,23 @@ public class MoniAnalysis
      *
      * @return DeployedDOM object
      */
-    public DeployedDOM findDOM(long mbKey)
+    public DOMValues findDOMValues(HashMap<Long, DOMValues> map, Long mbKey)
     {
-        final String mbId = String.format("%012x", mbKey);
-        return domRegistry.getDom(mbId);
+        // if cached entry exists for this DOM, return it
+        if (map.containsKey(mbKey)) {
+            return map.get(mbKey);
+        }
+
+        final String domKey = String.format("%012x", mbKey);
+        DeployedDOM dom = domRegistry.getDom(domKey);
+        if (dom == null) {
+            return null;
+        }
+
+        DOMValues dval = new DOMValues(dom);
+        map.put(mbKey, dval);
+
+        return dval;
     }
 
     /**
@@ -112,6 +138,15 @@ public class MoniAnalysis
 
         sendBinnedMonitorValues(startTime, endTime);
         sendSummaryMonitorValues();
+
+        if (fastMoni != null) {
+            try {
+                fastMoni.close();
+            } catch (I3HDFException ex) {
+                LOG.error("Failed to close FastMoniHDF", ex);
+                fastMoni = null;
+            }
+        }
 
         binStartTime = null;
         binEndTime = null;
@@ -174,27 +209,21 @@ public class MoniAnalysis
         if (payload instanceof HardwareMonitor) {
             HardwareMonitor mon = (HardwareMonitor) payload;
 
-            Long mbKey = mon.getDomId();
-
-            DOMValues dval;
-            if (domValues.containsKey(mbKey)) {
-                dval = domValues.get(mbKey);
+            DOMValues dval = findDOMValues(domValues, mon.getDomId());
+            if (dval == null) {
+                LOG.error("Cannot find DOM " + mon.getDomId());
             } else {
-                dval = new DOMValues();
-                domValues.put(mbKey, dval);
+                dval.speScalar += mon.getSPEScalar();
+                dval.mpeScalar += mon.getMPEScalar();
+
+                dval.hvSet = mon.getPMTBaseHVSetValue();
+
+                dval.hvTotal += mon.getPMTBaseHVMonitorValue();
+                dval.hvCount++;
+
+                dval.power5VTotal += mon.getADC5VPowerSupply();
+                dval.power5VCount++;
             }
-
-            dval.speScalar += mon.getSPEScalar();
-            dval.mpeScalar += mon.getMPEScalar();
-
-            dval.hvSet = mon.getPMTBaseHVSetValue();
-
-            dval.hvTotal += mon.getPMTBaseHVMonitorValue();
-            dval.hvCount++;
-
-            dval.power5VTotal += mon.getADC5VPowerSupply();
-            dval.power5VCount++;
-
         } else if (payload instanceof ASCIIMonitor) {
             ASCIIMonitor mon = (ASCIIMonitor) payload;
 
@@ -212,47 +241,83 @@ public class MoniAnalysis
                 return;
             }
 
-            // this loop originally grabbed all the values; I'm keeping it
-            // in place in case we ever decide to get the first two counts
-            int deadtime = 0;
-            for (int i = 4; i < 5; i++) {
-                int val;
-                try {
-                    val = Integer.parseInt(flds[i]);
-                } catch (NumberFormatException nfe) {
-                    LOG.error("Ignoring fast monitoring record (bad value #" +
-                              (i - 1) + " \"" + flds[i] + "\"): " + str);
-                    break;
-                }
-
-                switch (i) {
-                    //case 1:
-                    //speCount = val;
-                    //break;
-                    //case 2:
-                    //mpeCount = val;
-                    //break;
-                case 4:
-                    deadtime = val;
-                    break;
-                default:
-                    LOG.error("Not setting value for #" + i);
-                    break;
-                }
-            }
-
-            Long mbKey = mon.getDomId();
-
-            DOMValues dval;
-            if (domValues.containsKey(mbKey)) {
-                dval = domValues.get(mbKey);
+            DOMValues dval = findDOMValues(domValues, mon.getDomId());
+            if (dval == null) {
+                LOG.error("Cannot find DOM " + mon.getDomId());
             } else {
-                dval = new DOMValues();
-                domValues.put(mbKey, dval);
-            }
+                final boolean icetop = dval.dom.isIceTop();
 
-            dval.deadtimeTotal += deadtime;
-            dval.deadtimeCount++;
+                int speCount = Integer.MIN_VALUE;
+                int mpeCount = Integer.MIN_VALUE;
+                int launches = Integer.MIN_VALUE;
+
+                // this loop originally grabbed all the values; I'm keeping it
+                // in place in case we ever decide to get the first two counts
+                int deadtime = 0;
+                for (int i = 1; i < 5; i++) {
+                    // if this is not an icetop DOM we only need deadtime
+                    if (!icetop && i != 4) {
+                        continue;
+                    }
+
+                    int val;
+                    try {
+                        val = Integer.parseInt(flds[i]);
+                    } catch (NumberFormatException nfe) {
+                        LOG.error("Ignoring fast monitoring record" +
+                                  " (bad value #" + (i - 1) + " \"" +
+                                  flds[i] + "\"): " + str);
+                        break;
+                    }
+
+                    switch (i) {
+                    case 1:
+                        speCount = val;
+                        break;
+                    case 2:
+                        mpeCount = val;
+                        break;
+                    case 3:
+                        launches = val;
+                        break;
+                    case 4:
+                        deadtime = val;
+                        break;
+                    default:
+                        LOG.error("Not setting value for #" + i);
+                        break;
+                    }
+                }
+
+                dval.deadtimeTotal += deadtime;
+                dval.deadtimeCount++;
+
+                if (icetop) {
+                    if (fastMoni == null && !noJHDFLib) {
+                        try {
+                            fastMoni = new FastMoniHDF(getDispatcher(),
+                                                       getRunNumber());
+                        } catch (I3HDFException ex) {
+                            LOG.error("Cannot create HDF writer; IceTop" +
+                                      " monitoring values will not be written",
+                                      ex);
+                            noJHDFLib = true;
+                        }
+                    }
+
+                    if (fastMoni != null) {
+                        int[] data = new int[] {
+                            speCount, mpeCount, launches, deadtime
+                        };
+                        try {
+                            fastMoni.write(data);
+                        } catch (I3HDFException ex) {
+                            LOG.error("Cannot write IceTop FAST values for " +
+                                      dval.dom);
+                        }
+                    }
+                }
+            }
         } else if (!(payload instanceof Monitor)) {
             throw new MoniException("Saw non-Monitor payload " + payload);
         }
@@ -267,14 +332,6 @@ public class MoniAnalysis
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
-            if (dv.dom == null) {
-                dv.dom = findDOM(mbKey);
-                if (dv.dom == null) {
-                    LOG.error("Cannot find entry for DOM " +
-                              String.format("%012x", mbKey));
-                    continue;
-                }
-            }
 
             // 'deadtime' is average number of 25ns clock cycles per second
             // a PMT pulse arrived while both ATWDs were busy.
@@ -319,14 +376,6 @@ public class MoniAnalysis
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
-            if (dv.dom == null) {
-                dv.dom = findDOM(mbKey);
-                if (dv.dom == null) {
-                    LOG.error("Cannot find entry for DOM " +
-                              String.format("%012x", mbKey));
-                    continue;
-                }
-            }
 
             double voltage;
             if (dv.hvCount == 0) {
@@ -377,14 +426,6 @@ public class MoniAnalysis
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
-            if (dv.dom == null) {
-                dv.dom = findDOM(mbKey);
-                if (dv.dom == null) {
-                    LOG.error("Cannot find entry for DOM " +
-                              String.format("%012x", mbKey));
-                    continue;
-                }
-            }
 
             double voltage;
             if (dv.power5VCount == 0) {
@@ -424,14 +465,6 @@ public class MoniAnalysis
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
-            if (dv.dom == null) {
-                dv.dom = findDOM(mbKey);
-                if (dv.dom == null) {
-                    LOG.error("Cannot find entry for DOM " +
-                              String.format("%012x", mbKey));
-                    continue;
-                }
-            }
 
             speMap.put(dv.getOmID(), dv.speScalar);
 
@@ -510,6 +543,31 @@ public class MoniAnalysis
     }
 
     /**
+     * Switch to a new run.
+     *
+     * @return number of events dispatched before the run was switched
+     *
+     * @param runNumber new run number
+     */
+    public long switchToNewRun(int runNumber)
+    {
+        // parent class switches dispatcher to new run
+        long rtnval = super.switchToNewRun(runNumber);
+
+        if (fastMoni != null) {
+            try {
+                fastMoni.switchToNewRun(runNumber);
+            } catch (I3HDFException ex) {
+                LOG.error("Cannot switch to new HDF5 file for run " +
+                          runNumber, ex);
+                fastMoni = null;
+            }
+        }
+
+        return rtnval;
+    }
+
+    /**
      * Per-DOM monitoring data
      */
     class DOMValues
@@ -532,6 +590,11 @@ public class MoniAnalysis
 
         // OM ID generated from deployed DOM's major/minor values
         private String omId;
+
+        DOMValues(DeployedDOM dom)
+        {
+            this.dom = dom;
+        }
 
         /**
          * Get the OM ID

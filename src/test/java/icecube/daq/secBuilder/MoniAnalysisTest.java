@@ -43,6 +43,8 @@ public class MoniAnalysisTest
         new MockAppender(org.apache.log4j.Level.ALL).setVerbose(true);
         //new MockAppender(org.apache.log4j.Level.WARN).setVerbose(false);
 
+    private static final String tempDir = System.getProperty("java.io.tmpdir");
+
     private MockAlerter alerter;
 
     private MoniAnalysis buildAnalysis(boolean verbose)
@@ -56,16 +58,16 @@ public class MoniAnalysisTest
         return ma;
     }
 
-    private IDOMRegistry buildDOMRegistry()
+    private IDOMRegistry buildDOMRegistry(boolean fakeIcetop)
     {
         MockDOMRegistry reg = new MockDOMRegistry();
         for (int i = 0; i < 16; i++) {
-            int loc = i & 3;
-            if (loc == 3) {
-                loc = 63;
+            int loc = i;
+            if (fakeIcetop && loc > 12) {
+                loc = i + 48;
             }
 
-            reg.addDom((long) i, i >> 3, i & 3);
+            reg.addDom((long) i, i >> 3, loc);
         }
 
         return reg;
@@ -176,9 +178,10 @@ public class MoniAnalysisTest
                         try {
                             val = Integer.parseInt(flds[i]);
                         } catch (NumberFormatException nfe) {
-                            System.err.println("Ignoring fast monitoring record" +
-                                      " (bad value #" + (i - 1) + " \"" +
-                                      flds[i] + "\"): " + str);
+                            System.err.println("Ignoring fast monitoring" +
+                                               " record (bad value #" +
+                                               (i - 1) + " \"" + flds[i] +
+                                               "\"): " + str);
                             continue;
                         }
 
@@ -273,7 +276,7 @@ public class MoniAnalysisTest
             };
 
         MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
-        ma.setDOMRegistry(buildDOMRegistry());
+        ma.setDOMRegistry(buildDOMRegistry(false));
         ma.setAlerter(alerter);
 
         for (File f : top.listFiles(filter)) {
@@ -287,16 +290,75 @@ public class MoniAnalysisTest
         ma.finishMonitoring();
     }
 
-    public void testSimple()
+    public void testInIce()
         throws MoniException, PayloadException
     {
         MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
-        ma.setDOMRegistry(buildDOMRegistry());
+        ma.setDOMRegistry(buildDOMRegistry(false));
         ma.setAlerter(alerter);
 
         short[] data = new short[HardwareMonitor.NUM_DATA_ENTRIES];
 
         long baseDOM = 7;
+        long baseTime = 1234567890;
+        int nextTime = 11;
+        for (int i = 0; i < 1200; i += nextTime, nextTime++) {
+            long domId = (baseDOM + i) & 0xf;
+            long time = baseTime + ((long) i * 10000000000L);
+
+            Monitor mon;
+            if ((i & 1) == 0) {
+                String msg = String.format("F %d %d %d %d", i + 10, i + 11,
+                                           i + 15, i + 21);
+                mon = createASCIIRecord(domId, time, msg);
+            } else {
+                for (int di = 0; di < data.length; di++) {
+                    data[di] = (short) (i + di);
+                }
+
+                mon = createHardwareRecord(domId, time, data,
+                                           nextTime, nextTime & 0xcaca);
+            }
+
+            ma.gatherMonitoring(mon);
+        }
+        ma.finishMonitoring();
+
+        String[] twice = new String[] {
+            MoniAnalysis.SPE_MONI_NAME,
+            MoniAnalysis.MPE_MONI_NAME,
+            MoniAnalysis.HV_MONI_NAME,
+        };
+
+        HashMap<String, Integer> counts = new HashMap<String, Integer>();
+        counts.put(MoniAnalysis.SPE_MONI_NAME, 2);
+        counts.put(MoniAnalysis.MPE_MONI_NAME, 2);
+        counts.put(MoniAnalysis.HV_MONI_NAME, 2);
+        counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
+        counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
+        counts.put(MoniAnalysis.HV_MONI_NAME + "Set", 1);
+
+        for (String nm : counts.keySet()) {
+            assertEquals("Unexpected alert count for " + nm,
+                         counts.get(nm).intValue(), alerter.countAlerts(nm));
+
+            alerter.clear(nm);
+        }
+    }
+
+    public void testIceTop()
+        throws MoniException, PayloadException
+    {
+        MockDispatcher disp = new MockDispatcher();
+        disp.setDispatchDestStorage(tempDir);
+
+        MoniAnalysis ma = new MoniAnalysis(disp);
+        ma.setDOMRegistry(buildDOMRegistry(true));
+        ma.setAlerter(alerter);
+
+        short[] data = new short[HardwareMonitor.NUM_DATA_ENTRIES];
+
+        long baseDOM = 3;
         long baseTime = 1234567890;
         int nextTime = 11;
         for (int i = 0; i < 1200; i += nextTime, nextTime++) {

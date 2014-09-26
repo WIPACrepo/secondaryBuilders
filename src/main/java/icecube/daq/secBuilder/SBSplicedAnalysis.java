@@ -145,6 +145,16 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
     }
 
     /**
+     * Get the dispatcher object.
+     *
+     * @return dispatcher
+     */
+    public Dispatcher getDispatcher()
+    {
+        return dispatcher;
+    }
+
+    /**
      * Set the prescale factor - let through only every 'preScale'
      * events (default=1)
      *

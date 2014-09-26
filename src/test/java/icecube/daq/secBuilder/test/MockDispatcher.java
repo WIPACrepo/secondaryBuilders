@@ -7,6 +7,7 @@ import icecube.daq.payload.IEventPayload;
 import icecube.daq.payload.IWriteablePayload;
 import icecube.daq.payload.PayloadChecker;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -18,6 +19,7 @@ public class MockDispatcher
     private boolean dispatchError;
     private boolean readOnly;
     private boolean started;
+    private File dispatchDir;
 
     public MockDispatcher()
     {
@@ -96,6 +98,11 @@ public class MockDispatcher
         throw new Error("Unimplemented");
     }
 
+    public File getDispatchDestStorage()
+    {
+        return dispatchDir;
+    }
+
     public long getDiskAvailable()
     {
         return 0;
@@ -133,7 +140,7 @@ public class MockDispatcher
 
     public void setDispatchDestStorage(String destDir)
     {
-        // do nothing
+        dispatchDir = new File(destDir);
     }
 
     public void setDispatchError(boolean dispatchError)

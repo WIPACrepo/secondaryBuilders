@@ -50,7 +50,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15095 2014-07-18 20:51:47Z dglo $
+ * @version $Id: SBComponent.java 15168 2014-09-26 17:39:14Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -89,6 +89,9 @@ public class SBComponent extends DAQComponent
     }
 
     private static final Log LOG = LogFactory.getLog(SBComponent.class);
+
+    private static final boolean disableIceTopFastMoni =
+        !parseBoolean(System.getProperty("enableIceTopFastMoni", "true"));
 
     private IByteBufferCache tcalBufferCache;
     private IByteBufferCache snBufferCache;
@@ -225,6 +228,10 @@ public class SBComponent extends DAQComponent
             moniSplicer = new HKN1Splicer(moniSplicedAnalysis);
             addSplicer(moniSplicer);
 
+            if (disableIceTopFastMoni) {
+                moniSplicedAnalysis.disableIceTopFastMoni();
+            }
+
             moniSplicedAnalysis.setSplicer(moniSplicer);
             moniSplicedAnalysis.setStreamName("moni");
             try {
@@ -246,6 +253,22 @@ public class SBComponent extends DAQComponent
 
         addMBean("jvm", new MemoryStatistics());
         addMBean("system", new SystemStatistics());
+    }
+
+    /**
+     * Parse string as a boolean value.
+     * Allow any of "true", "yes", or "1" (case-insensitive)
+     *
+     * @return <tt>true</tt> if the string has a "true" value
+     */
+    private static final boolean parseBoolean(String str)
+    {
+        if (str == null) {
+            return false;
+        }
+
+        return str.equalsIgnoreCase("true") || str.equalsIgnoreCase("yes") ||
+            str == "1";
     }
 
     /**
@@ -472,7 +495,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15095 2014-07-18 20:51:47Z dglo $";
+        return "$Id: SBComponent.java 15168 2014-09-26 17:39:14Z dglo $";
     }
 
     /**
