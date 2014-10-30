@@ -479,7 +479,7 @@ public class MoniAnalysis
 
         HashMap valueMap = new HashMap();
         valueMap.put("recordingStartTime", startTime);
-        valueMap.put("recordingEndTime", endTime);
+        valueMap.put("recordingStopTime", endTime);
         valueMap.put("version", SPE_MPE_MONI_VERSION);
         valueMap.put("runNumber", getRunNumber());
 
