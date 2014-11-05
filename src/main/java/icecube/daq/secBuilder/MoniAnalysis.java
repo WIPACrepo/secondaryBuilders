@@ -335,8 +335,17 @@ public class MoniAnalysis
 
             // 'deadtime' is average number of 25ns clock cycles per second
             // a PMT pulse arrived while both ATWDs were busy.
-            final double deadtime = (double) dv.deadtimeTotal /
-                (double) dv.deadtimeCount;
+            final double deadtime;
+            if (dv.deadtimeCount == 0) {
+                if (dv.deadtimeTotal > 0) {
+                    LOG.error("Found deadtime " + dv.deadtimeTotal +
+                              " total with 0 count for " + dv.getOmID());
+                }
+                deadtime = 0.0;
+            } else {
+                deadtime = (double) dv.deadtimeTotal /
+                    (double) dv.deadtimeCount;
+            }
 
             // 'deadFraction' converts 'deadtime' to a fraction of a second
             //   (40000000 = 1000000000 ns/sec / 25 ns)
@@ -380,7 +389,7 @@ public class MoniAnalysis
             double voltage;
             if (dv.hvCount == 0) {
                 if (dv.hvTotal > 0) {
-                    LOG.error("Found " + dv.hvTotal +
+                    LOG.error("Found HV " + dv.hvTotal +
                               " total with 0 count for " + dv.getOmID());
                 }
                 voltage = 0.0;
@@ -430,7 +439,7 @@ public class MoniAnalysis
             double voltage;
             if (dv.power5VCount == 0) {
                 if (dv.power5VTotal > 0) {
-                    LOG.error("Found " + dv.power5VTotal +
+                    LOG.error("Found 5V " + dv.power5VTotal +
                               " total with 0 count for " + dv.getOmID());
                 }
                 voltage = 0.0;
