@@ -605,7 +605,7 @@ public class MoniAnalysis
         {
             if (omId == null) {
                 omId = String.format("(%d, %d)", dom.getStringMajor(),
-                                     dom.getStringMajor());
+                                     dom.getStringMinor());
             }
 
             return omId;
