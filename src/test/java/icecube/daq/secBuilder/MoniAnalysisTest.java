@@ -40,8 +40,8 @@ public class MoniAnalysisTest
     extends TestCase
 {
     private static final MockAppender appender =
-        new MockAppender(org.apache.log4j.Level.ALL).setVerbose(true);
-        //new MockAppender(org.apache.log4j.Level.WARN).setVerbose(false);
+        //new MockAppender(org.apache.log4j.Level.ALL).setVerbose(true);
+        new MockAppender(org.apache.log4j.Level.WARN).setVerbose(false);
 
     private static final String tempDir = System.getProperty("java.io.tmpdir");
 
