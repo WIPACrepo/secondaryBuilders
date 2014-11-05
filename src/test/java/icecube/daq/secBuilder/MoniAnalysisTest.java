@@ -253,8 +253,16 @@ public class MoniAnalysisTest
     protected void tearDown()
         throws Exception
     {
-        assertEquals("Bad number of log messages",
-                     0, appender.getNumberOfMessages());
+        if (appender.getNumberOfMessages() > 0) {
+            // ignore errors about missing HDF5 library
+            for (int i = 0; i < appender.getNumberOfMessages(); i++) {
+                final String msg = (String) appender.getMessage(i);
+                if (!msg.startsWith("Cannot find HDF library;")) {
+                    fail("Unexpected log message " + i + ": " +
+                         appender.getMessage(i));
+                }
+            }
+        }
 
         assertEquals("Bad number of alert messages",
                      0, alerter.countAllAlerts());
@@ -262,7 +270,10 @@ public class MoniAnalysisTest
         super.tearDown();
     }
 
-    public void ZZZtestStream()
+    // this code will send a moni file through MoniAnalysis
+    // it's useful for development, but there are no checks
+    // so it's not a good unit test
+    public void XXXtestStream()
     {
         File top = new File("/Users/dglo/prj/pdaq-madonna");
 
