@@ -302,6 +302,11 @@ public class MoniAnalysis
                                       " monitoring values will not be written",
                                       ex);
                             noJHDFLib = true;
+                        } catch (UnsatisfiedLinkError ule) {
+                            LOG.error("Cannot find HDF library; IceTop" +
+                                      " monitoring values will not be written",
+                                      ule);
+                            noJHDFLib = true;
                         }
                     }
 
