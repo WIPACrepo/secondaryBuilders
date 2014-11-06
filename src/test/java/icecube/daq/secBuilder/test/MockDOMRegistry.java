@@ -1,5 +1,6 @@
 package icecube.daq.secBuilder.test;
 
+import icecube.daq.payload.impl.DOMID;
 import icecube.daq.util.IDOMRegistry;
 import icecube.daq.util.DeployedDOM;
 
@@ -19,9 +20,14 @@ public class MockDOMRegistry
         doms.put(dom.getMainboardId(), dom);
     }
 
-    public short getChannelId(String mbid)
+    public short getChannelId(String mbId)
     {
         throw new Error("Unimplemented");
+    }
+
+    public DeployedDOM getDom(long mbId)
+    {
+        return doms.get(DOMID.toString(mbId));
     }
 
     public DeployedDOM getDom(String mbId)
