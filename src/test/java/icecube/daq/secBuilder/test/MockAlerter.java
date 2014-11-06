@@ -173,7 +173,12 @@ public class MockAlerter
                       Map<String, Object> values)
         throws AlertException
     {
-        AlertData alert = new AlertData(varname, priority, dateStr, values);
+        HashMap<String, Object> copy = new HashMap<String, Object>();
+        for (String key : values.keySet()) {
+            copy.put(key, values.get(key));
+        }
+
+        AlertData alert = new AlertData(varname, priority, dateStr, copy);
         if (verbose) {
             System.err.println(alert.toString());
         }
