@@ -50,7 +50,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15168 2014-09-26 17:39:14Z dglo $
+ * @version $Id: SBComponent.java 15256 2014-11-14 14:43:43Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -429,29 +429,6 @@ public class SBComponent extends DAQComponent
     }
 
     /**
-     * Set the run number inside this component.
-     *
-     * @param runNumber run number
-     */
-    public void setRunNumber(int runNumber)
-    {
-        if (LOG.isInfoEnabled()) {
-            LOG.info("Setting runNumber = " + runNumber);
-        }
-        if (isTcalEnabled) {
-            tcalSplicedAnalysis.setRunNumber(runNumber);
-        }
-        if (isSnEnabled) {
-            snSplicedAnalysis.setRunNumber(runNumber);
-        }
-        if (isMoniEnabled) {
-            moniSplicedAnalysis.setRunNumber(runNumber);
-        }
-
-        this.runNumber = runNumber;
-    }
-
-    /**
      * Set the destination directory where the dispatch files will be saved.
      *
      * @param dirName The absolute path of directory where the dispatch
@@ -495,7 +472,30 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15168 2014-09-26 17:39:14Z dglo $";
+        return "$Id: SBComponent.java 15256 2014-11-14 14:43:43Z dglo $";
+    }
+
+    /**
+     * Set the run number at the start of the run.
+     *
+     * @param runNumber run number
+     */
+    public void starting(int runNumber)
+    {
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Setting runNumber = " + runNumber);
+        }
+        if (isTcalEnabled) {
+            tcalSplicedAnalysis.setRunNumber(runNumber);
+        }
+        if (isSnEnabled) {
+            snSplicedAnalysis.setRunNumber(runNumber);
+        }
+        if (isMoniEnabled) {
+            moniSplicedAnalysis.setRunNumber(runNumber);
+        }
+
+        this.runNumber = runNumber;
     }
 
     /**
