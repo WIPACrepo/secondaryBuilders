@@ -90,6 +90,21 @@ public class FastMoniHDF
     }
 
     /**
+     * Check that we can access the JHDF library.
+     *
+     * @return <tt>false</tt> if the library is not available
+     */
+    public static final boolean checkForLibrary()
+    {
+        try {
+            // this should always return true
+            return HDF5Constants.H5P_DATASET_CREATE != Integer.MIN_VALUE;
+        } catch (Throwable thr) {
+            return false;
+        }
+    }
+
+    /**
      * Release resources
      *
      * @throws I3HDFException if there is a problem
@@ -188,6 +203,15 @@ public class FastMoniHDF
             }
 
             throw new I3HDFException(hex);
+        } catch (NoClassDefFoundError ncdf) {
+            if (!loggedHelp) {
+                LOG.error("Cannot create initial dataset property; have" +
+                          " you added -Djava.library.path=/path/to/jhdf5" +
+                          " to the SecondaryBuilders cluster config entry?");
+                loggedHelp = true;
+            }
+
+            throw new I3HDFException(ncdf);
         }
 
         final long[] dim = {LENGTH, WIDTH};

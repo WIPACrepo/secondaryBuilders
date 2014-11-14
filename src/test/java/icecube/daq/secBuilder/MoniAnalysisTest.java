@@ -253,7 +253,9 @@ public class MoniAnalysisTest
             for (int i = 0; i < appender.getNumberOfMessages(); i++) {
                 final String msg = (String) appender.getMessage(i);
                 if (!msg.startsWith("Cannot find HDF library;") &&
-                    !msg.contains("was not moved to the dispatch storage"))
+                    !msg.contains("was not moved to the dispatch storage") &&
+                    !msg.startsWith("Cannot create initial dataset prop") &&
+                    !msg.startsWith("Cannot create HDF writer"))
                 {
                     fail("Unexpected log message " + i + ": " +
                          appender.getMessage(i));

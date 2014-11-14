@@ -50,18 +50,17 @@ public class FastMoniHDFTest
     public void testHdfClass()
         throws Exception
     {
+        if (!FastMoniHDF.checkForLibrary()) {
+            System.err.println("Skipping FastMoniHDF tests");
+            return;
+        }
+
         final int runNum = 12345;
 
         MockDispatcher disp = new MockDispatcher();
         disp.setDispatchDestStorage(tempDir);
 
-        FastMoniHDF hfm;
-        try {
-            hfm = new FastMoniHDF(disp, runNum);
-        } catch (UnsatisfiedLinkError ule) {
-            System.err.println("Skipping FastMoniHDF tests");
-            return;
-        }
+        FastMoniHDF hfm = new FastMoniHDF(disp, runNum);
 
         int[] data = new int[FastMoniHDF.WIDTH];
 
