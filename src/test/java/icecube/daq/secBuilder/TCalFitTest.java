@@ -6,18 +6,15 @@ import icecube.daq.secBuilder.test.MockAppender;
 import icecube.daq.secBuilder.test.TCalData;
 import icecube.daq.secBuilder.test.TCalDataFactory;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-import junit.textui.TestRunner;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.apache.log4j.BasicConfigurator;
 
+import org.junit.*;
+import static org.junit.Assert.*;
+
 public class TCalFitTest
-    extends TestCase
 {
     private static final MockAppender appender =
         new MockAppender(org.apache.log4j.Level.ALL).setVerbose(true);
@@ -39,29 +36,22 @@ public class TCalFitTest
         }
     }
 
-    protected void setUp()
+    @Before
+    public void setUp()
         throws Exception
     {
-        super.setUp();
-
         appender.clear();
 
         BasicConfigurator.resetConfiguration();
         BasicConfigurator.configure(appender);
     }
 
-    public static Test suite()
-    {
-        return new TestSuite(TCalAnalysisTest.class);
-    }
-
-    protected void tearDown()
+    @After
+    public void tearDown()
         throws Exception
     {
         assertEquals("Bad number of log messages",
                      0, appender.getNumberOfMessages());
-
-        super.tearDown();
     }
 
     private static final void checkFit(WaveformFit wfit, int entry,
@@ -84,6 +74,7 @@ public class TCalFitTest
                      expDomSample, wfit.getDomSample(), 0.000001);
     }
 
+    @Test
     public void testCentroid()
         throws MoniException, PayloadException
     {
@@ -166,6 +157,7 @@ public class TCalFitTest
         }
     }
 
+    @Test
     public void testCrossover()
         throws MoniException, PayloadException
     {
@@ -248,6 +240,7 @@ public class TCalFitTest
         }
     }
 
+    @Test
     public void testThreshold()
         throws MoniException, PayloadException
     {
@@ -330,6 +323,7 @@ public class TCalFitTest
         }
     }
 
+    @Test
     public void testIntercept()
         throws MoniException, PayloadException
     {
@@ -410,10 +404,5 @@ public class TCalFitTest
             checkFit(wfit, i, expDOMT0, expDelta, expRoundtrip, expDorSample,
                      expDomSample);
         }
-    }
-
-    public static void main(String[] args)
-    {
-        TestRunner.run(suite());
     }
 }

@@ -3,6 +3,7 @@ package icecube.daq.secBuilder;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.juggler.alert.Alerter;
 import icecube.daq.juggler.alert.AlertException;
+import icecube.daq.juggler.alert.AlertQueue;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.IUTCTime;
@@ -54,7 +55,7 @@ public class MoniAnalysis
 
     private static IDOMRegistry domRegistry;
 
-    private Alerter alerter;
+    private AlertQueue alertQueue;
 
     private IUTCTime binStartTime = null;
     private IUTCTime binEndTime = null;
@@ -164,10 +165,11 @@ public class MoniAnalysis
         // make sure we've got everything we need
         if (domRegistry == null) {
             throw new MoniException("DOM registry has not been set");
-        } else if (alerter == null) {
-            throw new MoniException("Alerter has not been set");
-        } else if (!alerter.isActive()) {
-            throw new MoniException("Alerter " + alerter + " is not active");
+        } else if (alertQueue == null) {
+            throw new MoniException("AlertQueue has not been set");
+        } else if (alertQueue.isStopped()) {
+            throw new MoniException("AlertQueue " + alertQueue +
+                                    " is stopped");
         }
 
         // load the payload
@@ -331,7 +333,7 @@ public class MoniAnalysis
     /**
      * Send average deadtime
      */
-    private void send_Deadtime()
+    private void sendDeadtime()
     {
         HashMap<String, Double> map = new HashMap<String, Double>();
 
@@ -376,7 +378,7 @@ public class MoniAnalysis
      * @param startTime starting date/time string
      * @param endTime ending date/time string
      */
-    private void send_HV(String startTime, String endTime)
+    private void sendHV(String startTime, String endTime)
     {
         HashMap<String, Double> hvMap = new HashMap<String, Double>();
 
@@ -413,28 +415,32 @@ public class MoniAnalysis
             }
         }
 
-        HashMap valueMap = new HashMap();
-        valueMap.put("recordingStartTime", startTime);
-        valueMap.put("recordingStopTime", endTime);
-        valueMap.put("version", HV_MONI_VERSION);
-        valueMap.put("runNumber", getRunNumber());
-
         if (setMap != null) {
-            valueMap.put("value", setMap);
-            sendMessage(HV_MONI_NAME + "Set", valueMap);
+            HashMap setMsg = new HashMap();
+            setMsg.put("recordingStartTime", startTime);
+            setMsg.put("recordingStopTime", endTime);
+            setMsg.put("version", HV_MONI_VERSION);
+            setMsg.put("runNumber", getRunNumber());
+            setMsg.put("value", setMap);
+            sendMessage(HV_MONI_NAME + "Set", setMsg);
 
             // remember that we sent the HV settings
             sentHVSet = true;
         }
 
-        valueMap.put("value", hvMap);
-        sendMessage(HV_MONI_NAME, valueMap);
+        HashMap hvMsg = new HashMap();
+        hvMsg.put("recordingStartTime", startTime);
+        hvMsg.put("recordingStopTime", endTime);
+        hvMsg.put("version", HV_MONI_VERSION);
+        hvMsg.put("runNumber", getRunNumber());
+        hvMsg.put("value", hvMap);
+        sendMessage(HV_MONI_NAME, hvMsg);
     }
 
     /**
      * Send average Power Supply voltage
      */
-    private void send_Power()
+    private void sendPower()
     {
         HashMap<String, Double> map = new HashMap<String, Double>();
 
@@ -472,7 +478,7 @@ public class MoniAnalysis
      * @param startTime starting date/time string
      * @param endTime ending date/time string
      */
-    private void send_SPE_MPE(String startTime, String endTime)
+    private void sendSPEMPE(String startTime, String endTime)
     {
         HashMap<String, Long> speMap = new HashMap<String, Long>();
         HashMap<String, Long> mpeMap = new HashMap<String, Long>();
@@ -491,17 +497,22 @@ public class MoniAnalysis
             }
         }
 
-        HashMap valueMap = new HashMap();
-        valueMap.put("recordingStartTime", startTime);
-        valueMap.put("recordingStopTime", endTime);
-        valueMap.put("version", SPE_MPE_MONI_VERSION);
-        valueMap.put("runNumber", getRunNumber());
+        HashMap mpeMsg = new HashMap();
+        mpeMsg.put("recordingStartTime", startTime);
+        mpeMsg.put("recordingStopTime", endTime);
+        mpeMsg.put("version", SPE_MPE_MONI_VERSION);
+        mpeMsg.put("runNumber", getRunNumber());
+        mpeMsg.put("value", speMap);
+        sendMessage(SPE_MONI_NAME, mpeMsg);
 
-        valueMap.put("value", speMap);
-        sendMessage(SPE_MONI_NAME, valueMap);
-
-        valueMap.put("value", mpeMap);
-        sendMessage(MPE_MONI_NAME, valueMap);
+        HashMap speMsg = new HashMap();
+        speMsg.put("recordingStartTime", startTime);
+        speMsg.put("recordingStopTime", endTime);
+        speMsg.put("version", SPE_MPE_MONI_VERSION);
+        speMsg.put("runNumber", getRunNumber());
+        speMsg.put("value", speMap);
+        speMsg.put("value", mpeMap);
+        sendMessage(MPE_MONI_NAME, speMsg);
     }
 
     /**
@@ -512,14 +523,14 @@ public class MoniAnalysis
      */
     private void sendBinnedMonitorValues(String startTime, String endTime)
     {
-        send_SPE_MPE(startTime, endTime);
-        send_HV(startTime, endTime);
+        sendSPEMPE(startTime, endTime);
+        sendHV(startTime, endTime);
     }
 
     private void sendMessage(String varname, Map<String, Object> value)
     {
         try {
-            alerter.send(varname, Alerter.Priority.SCP, binEndTime, value);
+            alertQueue.push(varname, Alerter.Priority.SCP, binEndTime, value);
         } catch (AlertException ae) {
             LOG.error("Cannot send " + varname, ae);
         } catch (Throwable thr) {
@@ -532,8 +543,26 @@ public class MoniAnalysis
      */
     private void sendSummaryMonitorValues()
     {
-        send_Deadtime();
-        send_Power();
+        sendDeadtime();
+        sendPower();
+    }
+
+    /**
+     * Set the object used to send monitoring quantities
+     *
+     * @param newQueue new alert queue
+     */
+    public void setAlertQueue(AlertQueue newQueue)
+    {
+        if (alertQueue != null && !alertQueue.isStopped()) {
+            alertQueue.stop();
+        }
+
+        alertQueue = newQueue;
+
+        if (alertQueue != null && alertQueue.isStopped()) {
+            alertQueue.start();
+        }
     }
 
     /**
@@ -544,16 +573,6 @@ public class MoniAnalysis
     public static void setDOMRegistry(IDOMRegistry reg)
     {
         domRegistry = reg;
-    }
-
-    /**
-     * Set the object used to send monitoring quantities
-     *
-     * @param alert alerter
-     */
-    public void setAlerter(Alerter alerter)
-    {
-        this.alerter = alerter;
     }
 
     /**
@@ -623,6 +642,15 @@ public class MoniAnalysis
             }
 
             return omId;
+        }
+
+        public String toString()
+        {
+            return String.format("%s: spe %d mpe %d hv %d hvTot %d hvCnt %d" +
+                                 " 5VTot %d 5VCnt %d deadTot %d deadCnt %d",
+                                 getOmID(), speScalar, mpeScalar, hvSet,
+                                 hvTotal, hvCount, power5VTotal, power5VCount,
+                                 deadtimeTotal, deadtimeCount);
         }
     }
 }

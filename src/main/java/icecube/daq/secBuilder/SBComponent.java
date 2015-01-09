@@ -50,7 +50,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15256 2014-11-14 14:43:43Z dglo $
+ * @version $Id: SBComponent.java 15333 2015-01-09 22:08:50Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -326,8 +326,8 @@ public class SBComponent extends DAQComponent
 
         parseConfigFile(runConfigFileName);
 
-        moniSplicedAnalysis.setAlerter(getAlerter());
-        tcalSplicedAnalysis.setAlerter(getAlerter());
+        moniSplicedAnalysis.setAlertQueue(getAlertQueue());
+        tcalSplicedAnalysis.setAlertQueue(getAlertQueue());
     }
 
     /**
@@ -472,7 +472,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15256 2014-11-14 14:43:43Z dglo $";
+        return "$Id: SBComponent.java 15333 2015-01-09 22:08:50Z dglo $";
     }
 
     /**

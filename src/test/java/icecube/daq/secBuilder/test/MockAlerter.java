@@ -103,7 +103,7 @@ public class MockAlerter
      */
     public String getService()
     {
-        throw new Error("Unimplemented");
+        return DEFAULT_SERVICE;
     }
 
     /**
@@ -117,68 +117,61 @@ public class MockAlerter
     }
 
     /**
-     * Send a message to IceCube Live.
+     * Send a Java object (as a JSON string) to a 0MQ server.
      *
-     * @param varname variable name
-     * @param priority priority level
-     * @param values map of names to values
+     * @param obj object to send
      */
-    public void send(String varname, Alerter.Priority priority,
-                     Map<String, Object> values)
+    public void sendObject(Object obj)
         throws AlertException
     {
-        send(varname, priority, Calendar.getInstance(), values);
-    }
-
-    /**
-     * Send a message to IceCube Live.
-     *
-     * @param varname variable name
-     * @param priority priority level
-     * @param dateTime date and time for message
-     * @param values map of names to values
-     */
-    public void send(String varname, Alerter.Priority priority,
-                     Calendar dateTime, Map<String, Object> values)
-        throws AlertException
-    {
-        final String dateStr =
-            String.format("%tF %tT.%tL000", dateTime, dateTime, dateTime);
-        send(varname, priority, dateStr, values);
-    }
-
-    /**
-     * Send a message to IceCube Live.
-     *
-     * @param varname variable name
-     * @param priority priority level
-     * @param values map of names to values
-     */
-    public void send(String varname, Alerter.Priority priority,
-                     IUTCTime daqTime, Map<String, Object> values)
-        throws AlertException
-    {
-        send(varname, priority, daqTime.toDateString(), values);
-    }
-
-    /**
-     * Send a message to IceCube Live.
-     *
-     * @param varname variable name
-     * @param priority priority level
-     * @param date date and time for message
-     * @param values map of variable names to values
-     */
-    private void send(String varname, Priority priority, String dateStr,
-                      Map<String, Object> values)
-        throws AlertException
-    {
-        HashMap<String, Object> copy = new HashMap<String, Object>();
-        for (String key : values.keySet()) {
-            copy.put(key, values.get(key));
+        if (obj == null) {
+            throw new Error("Cannot send null object");
+        } else if (!(obj instanceof Map)) {
+            throw new Error("Unexpected object type " +
+                            obj.getClass().getName());
         }
 
-        AlertData alert = new AlertData(varname, priority, dateStr, copy);
+        Map<String, Object> map = (Map<String, Object>) obj;
+
+        String varname;
+        if (!map.containsKey("varname")) {
+            varname = null;
+        } else {
+            varname = (String) map.get("varname");
+        }
+
+        Alerter.Priority prio = Alerter.Priority.DEBUG;
+        if (map.containsKey("prio")) {
+            int tmpVal = (Integer) map.get("prio");
+            for (Alerter.Priority p : Alerter.Priority.values()) {
+                if (p.value() == tmpVal) {
+                    prio = p;
+                    break;
+                }
+            }
+        }
+
+        String dateStr;
+        if (!map.containsKey("t")) {
+            dateStr = null;
+        } else {
+            dateStr = (String) map.get("t");
+        }
+
+        Map<String, Object> values;
+        if (!map.containsKey("value")) {
+            values = null;
+        } else {
+            values = new HashMap<String, Object>();
+
+            Map<String, Object> tmpVals =
+                (Map<String, Object>) map.get("value");
+            for (String key : tmpVals.keySet()) {
+                values.put(key, tmpVals.get(key));
+            }
+        }
+
+        AlertData alert = new AlertData(varname, prio, dateStr, values);
         if (verbose) {
             System.err.println(alert.toString());
         }
@@ -188,91 +181,9 @@ public class MockAlerter
         }
 
         Gson gson = new Gson();
-        gson.toJson(alert);
+        gson.toJson(obj);
 
         alerts.get(varname).add(alert);
-    }
-
-    /**
-     * Send an alert.
-     *
-     * @param priority priority level
-     * @param condition I3Live condition
-     * @param values map of variable names to values
-     *
-     * @throws AlertException if there is a problem with one of the parameters
-     */
-    public void sendAlert(Alerter.Priority priority, String condition,
-                          Map<String, Object> values)
-        throws AlertException
-    {
-        throw new Error("Unimplemented");
-    }
-
-    /**
-     * Send an alert.
-     *
-     * @param priority priority level
-     * @param condition I3Live condition
-     * @param notify list of email addresses which receive notification
-     * @param values map of variable names to values
-     *
-     * @throws AlertException if there is a problem with one of the parameters
-     */
-    public void sendAlert(Alerter.Priority priority, String condition,
-                          String notify, Map<String, Object> values)
-        throws AlertException
-    {
-        throw new Error("Unimplemented");
-    }
-
-    /**
-     * Send an alert.
-     *
-     * @param dateTime date and time for message
-     * @param priority priority level
-     * @param condition I3Live condition
-     * @param notify list of email addresses which receive notification
-     * @param values map of variable names to values
-     *
-     * @throws AlertException if there is a problem with one of the parameters
-     */
-    public void sendAlert(Calendar dateTime, Alerter.Priority priority,
-                          String condition, String notify,
-                          Map<String, Object> values)
-        throws AlertException
-    {
-        throw new Error("Unimplemented");
-    }
-
-    /**
-     * Send an alert.
-     *
-     * @param daqTime DAQ Time
-     * @param priority priority level
-     * @param condition I3Live condition
-     * @param notify list of email addresses which receive notification
-     * @param values map of variable names to values
-     *
-     * @throws AlertException if there is a problem with one of the parameters
-     */
-    public void sendAlert(IUTCTime daqTime, Alerter.Priority priority,
-                          String condition, String notify,
-                          Map<String, Object> values)
-        throws AlertException
-    {
-        throw new Error("Unimplemented");
-    }
-
-    /**
-     * Send a Java object (as a JSON string) to a 0MQ server.
-     *
-     * @param obj object to send
-     */
-    public void sendObject(Object obj)
-        throws AlertException
-    {
-        throw new Error("Unimplemented");
     }
 
     /**
@@ -297,5 +208,11 @@ public class MockAlerter
     public void setVerbose(boolean val)
     {
         verbose = val;
+    }
+
+    public String toString()
+    {
+        return "MockAlerter[" + alerts.size() +" alerts(" +
+            alerts.keySet() + ")" + (closed ? ",closed" : "") + "]";
     }
 }

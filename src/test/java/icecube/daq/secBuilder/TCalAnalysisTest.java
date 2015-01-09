@@ -2,6 +2,7 @@ package icecube.daq.secBuilder;
 
 import icecube.daq.io.PayloadFileReader;
 import icecube.daq.juggler.alert.AlertException;
+import icecube.daq.juggler.alert.AlertQueue;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.PayloadException;
@@ -24,22 +25,19 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-import junit.textui.TestRunner;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.apache.log4j.BasicConfigurator;
 
+import org.junit.*;
+import static org.junit.Assert.*;
+
 public class TCalAnalysisTest
-    extends TestCase
 {
     private static final MockAppender appender =
-        new MockAppender(org.apache.log4j.Level.ALL).setVerbose(true);
-        //new MockAppender(org.apache.log4j.Level.WARN).setVerbose(false);
+        //new MockAppender(org.apache.log4j.Level.ALL).setVerbose(true);
+        new MockAppender(org.apache.log4j.Level.WARN).setVerbose(false);
 
     private static final String ALERT_NAME = TCalAnalysis.TCAL_EXCEPTION_NAME;
 
@@ -94,6 +92,56 @@ public class TCalAnalysisTest
         }
     }
 
+    private TCalAnalysis buildAnalysis(boolean verbose)
+    {
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        ta.setAlertQueue(new AlertQueue(alerter));
+
+        return ta;
+    }
+
+    private static void checkAlert(MockAlerter alerter, String errorStr,
+                                   TCalData td)
+    {
+        assertEquals("Unexpected " + ALERT_NAME + " alerts",
+                     1, alerter.countAlerts(ALERT_NAME));
+
+        AlertData alert = alerter.get(ALERT_NAME, 0);
+        assertNotNull("Couldn't get expected " + ALERT_NAME + " alert", alert);
+
+        Map<String, Object> values = alert.getValues();
+        assertEquals("Bad error message", errorStr, values.get("error"));
+        assertEquals("Bad DOR TX",
+                     (Long) td.getDorTXTime(), values.get("DORTX"));
+        assertEquals("Bad DOM RX",
+                     (Long) td.getDomRXTime(), values.get("DOMRX"));
+        assertEquals("Bad DOM TX",
+                     (Long) td.getDomTXTime(), values.get("DOMTX"));
+        assertEquals("Bad DOR RX",
+                     (Long) td.getDorRXTime(), values.get("DORRX"));
+
+        alerter.clear(ALERT_NAME);
+    }
+
+    private static void compareWaveform(String name, short[] valid,
+                                        short[] check)
+    {
+        assertNotNull(name + " waveform is null", check);
+        if (valid.length != check.length) {
+            fail(String.format("Expected %s waveform with %d entries," +
+                                   " not %d", name, valid.length,
+                               check.length));
+        }
+
+        for (int i = 0; i < valid.length; i++) {
+            assertEquals("Bad " + name + " waveform #" + i, valid[i],
+                         check[i]);
+        }
+    }
+
     private static void dumpJava(TimeCalibration tcal)
     {
         System.out.printf("        new TCalData(%dL, 0x%012xL, %dL,\n",
@@ -136,55 +184,6 @@ public class TCalAnalysisTest
             }
         }
         System.out.println();
-    }
-
-    private TCalAnalysis buildAnalysis(boolean verbose)
-    {
-        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
-
-        alerter.setVerbose(verbose);
-
-        ta.setAlerter(alerter);
-
-        return ta;
-    }
-
-    private static void checkAlert(MockAlerter alerter, String errorStr,
-                                   TCalData td)
-    {
-        assertEquals("Unexpected alerts", 1, alerter.countAlerts(ALERT_NAME));
-
-        AlertData alert = alerter.get(ALERT_NAME, 0);
-        assertNotNull("Couldn't get expected alert", alert);
-
-        Map<String, Object> values = alert.getValues();
-        assertEquals("Bad error message", errorStr, values.get("error"));
-        assertEquals("Bad DOR TX",
-                     (Long) td.getDorTXTime(), values.get("DORTX"));
-        assertEquals("Bad DOM RX",
-                     (Long) td.getDomRXTime(), values.get("DOMRX"));
-        assertEquals("Bad DOM TX",
-                     (Long) td.getDomTXTime(), values.get("DOMTX"));
-        assertEquals("Bad DOR RX",
-                     (Long) td.getDorRXTime(), values.get("DORRX"));
-
-        alerter.clear(ALERT_NAME);
-    }
-
-    private static void compareWaveform(String name, short[] valid,
-                                        short[] check)
-    {
-        assertNotNull(name + " waveform is null", check);
-        if (valid.length != check.length) {
-            fail(String.format("Expected %s waveform with %d entries," +
-                                   " not %d", name, valid.length,
-                               check.length));
-        }
-
-        for (int i = 0; i < valid.length; i++) {
-            assertEquals("Bad " + name + " waveform #" + i, valid[i],
-                         check[i]);
-        }
     }
 
     // emulate FAT_reader output for debugging
@@ -328,6 +327,27 @@ public class TCalAnalysisTest
         if (verbose) System.out.println("End Payload: <== " + depth);
     }
 
+    private void flushQueue(AlertQueue aq)
+    {
+        if (!aq.isStopped()) {
+            for (int i = 0; i < 1000; i++) {
+                if (aq.isIdle() && aq.getNumQueued() == 0) {
+                    break;
+                }
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException ie) {
+                    break;
+                }
+            }
+
+            if (aq.getNumQueued() > 0) {
+                throw new Error("Cannot flush " + aq + "; " +
+                                aq.getNumQueued() + " alerts queued");
+            }
+        }
+    }
+
     private void initAnalysis(TCalAnalysis ta, TCalData td)
     {
         MockDOMRegistry reg = new MockDOMRegistry();
@@ -335,11 +355,10 @@ public class TCalAnalysisTest
         ta.setDOMRegistry(reg);
     }
 
-    protected void setUp()
+    @Before
+    public void setUp()
         throws Exception
     {
-        super.setUp();
-
         appender.clear();
 
         BasicConfigurator.resetConfiguration();
@@ -348,12 +367,8 @@ public class TCalAnalysisTest
         alerter = new MockAlerter();
     }
 
-    public static Test suite()
-    {
-        return new TestSuite(TCalAnalysisTest.class);
-    }
-
-    protected void tearDown()
+    @After
+    public void tearDown()
         throws Exception
     {
         assertEquals("Bad number of log messages",
@@ -361,8 +376,6 @@ public class TCalAnalysisTest
 
         assertEquals("Bad number of alert messages",
                      0, alerter.countAllAlerts());
-
-        super.tearDown();
     }
 
     private static void validate(TCalData td, TimeCalibration tcal)
@@ -450,6 +463,7 @@ public class TCalAnalysisTest
         }
     }
 
+    @Test
     public void testValid()
         throws MoniException, PayloadException
     {
@@ -463,7 +477,7 @@ public class TCalAnalysisTest
             reg.addDom(td.getDomId(), 2029, 1);
             ta.setDOMRegistry(reg);
 
-            ta.setAlerter(alerter);
+            ta.setAlertQueue(new AlertQueue(alerter));
 
             TimeCalibration tcal = td.create();
 
@@ -473,6 +487,7 @@ public class TCalAnalysisTest
         }
     }
 
+    @Test
     public void testNoRegistry()
         throws MoniException, PayloadException
     {
@@ -495,6 +510,7 @@ public class TCalAnalysisTest
         }
     }
 
+    @Test
     public void testNoAlerter()
         throws MoniException, PayloadException
     {
@@ -502,43 +518,50 @@ public class TCalAnalysisTest
 
         TCalAnalysis ta = buildAnalysis(verbose);
 
+        ta.setAlertQueue(null);
+
         TCalData td = TCalDataFactory.get(0);
 
         initAnalysis(ta, td);
-
-        ta.setAlerter(null);
 
         try {
             ta.gatherMonitoring(td.create());
             fail("Should not work without alerter");
         } catch (MoniException me) {
-            assertEquals("Bad exception", "Alerter has not been set",
+            assertEquals("Bad exception", "AlertQueue has not been set",
                          me.getMessage());
         }
     }
 
+    @Test
     public void testInactiveAlerter()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
         initAnalysis(ta, td);
 
-        alerter.close();
+        aq.stopAndWait();
 
         try {
             ta.gatherMonitoring(td.create());
             fail("Should not work without alerter");
         } catch (MoniException me) {
-            assertEquals("Bad exception", "Alerter " + alerter +
-                         " is not active", me.getMessage());
+            assertEquals("Bad exception", "AlertQueue " + aq + " is stopped",
+                         me.getMessage());
         }
     }
 
+    @Test
     public void testIOException()
         throws MoniException, PayloadException
     {
@@ -559,6 +582,7 @@ public class TCalAnalysisTest
         }
     }
 
+    @Test
     public void testPayloadException()
         throws MoniException, PayloadException
     {
@@ -579,6 +603,7 @@ public class TCalAnalysisTest
         }
     }
 
+    @Test
     public void testBadPayload()
         throws MoniException, PayloadException
     {
@@ -598,12 +623,18 @@ public class TCalAnalysisTest
         }
     }
 
+    @Test
     public void testBadDOM()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -615,15 +646,23 @@ public class TCalAnalysisTest
 
         ta.gatherMonitoring(td.create());
 
+        aq.stopAndWait();
+
         checkAlert(alerter, String.format("Unknown DOM %012x", badDOM), td);
     }
 
+    @Test
     public void testBadQuality()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -635,16 +674,24 @@ public class TCalAnalysisTest
 
         ta.gatherMonitoring(td.create());
 
+        aq.stopAndWait();
+
         checkAlert(alerter, String.format("GPS Quality byte='%c'",
                                           badQuality), td);
     }
 
+    @Test
     public void testGPSString()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -656,16 +703,24 @@ public class TCalAnalysisTest
 
         ta.gatherMonitoring(td.create());
 
+        aq.stopAndWait();
+
         checkAlert(alerter, "DOR GPS string \"" + badDate + "\" is invalid",
                    td);
     }
 
+    @Test
     public void testHugeDORTX()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -677,15 +732,23 @@ public class TCalAnalysisTest
 
         ta.gatherMonitoring(td.create());
 
+        aq.stopAndWait();
+
         checkAlert(alerter, "DOR GPS timestamp is invalid", td);
     }
 
+    @Test
     public void testHugeSync()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -697,15 +760,23 @@ public class TCalAnalysisTest
 
         ta.gatherMonitoring(td.create(), verbose);
 
+        aq.stopAndWait();
+
         checkAlert(alerter, "DOR GPS timestamp is invalid", td);
     }
 
+    @Test
     public void testInvalidGPSTime()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -718,15 +789,23 @@ public class TCalAnalysisTest
 
         ta.gatherMonitoring(td.create(), verbose);
 
+        aq.stopAndWait();
+
         checkAlert(alerter, "DOR GPS timestamp is invalid", td);
     }
 
+    @Test
     public void testModifiedGPSDiff()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         MockDOMRegistry reg = new MockDOMRegistry();
         ta.setDOMRegistry(reg);
@@ -759,6 +838,8 @@ public class TCalAnalysisTest
 
             ta.gatherMonitoring(td.create(), verbose);
 
+            flushQueue(aq);
+
             switch (numSeen) {
             case 1: // no alerts on first entry
                 break;
@@ -777,14 +858,22 @@ public class TCalAnalysisTest
                 break;
             }
         }
+
+        aq.stopAndWait();
     }
 
+    @Test
     public void testBadWaveform()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -796,18 +885,26 @@ public class TCalAnalysisTest
 
         ta.gatherMonitoring(td.create(), verbose);
 
+        aq.stopAndWait();
+
         final String errmsg =
             String.format("Bad waveform, skipping %012x tcal 1",
                           td.getDomId());
         checkAlert(alerter, errmsg, td);
     }
 
+    @Test
     public void testBadRTrip()
         throws MoniException, PayloadException
     {
         final boolean verbose = false;
 
-        TCalAnalysis ta = buildAnalysis(verbose);
+        TCalAnalysis ta = new TCalAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ta.setAlertQueue(aq);
 
         TCalData td = TCalDataFactory.get(0);
 
@@ -815,6 +912,8 @@ public class TCalAnalysisTest
 
         for (int i = 0; i < 4; i++) {
             ta.gatherMonitoring(td.create(), verbose);
+
+            flushQueue(aq);
 
             if (i < 3) {
                 assertEquals("Unexpected alerts", 0,
@@ -832,11 +931,8 @@ public class TCalAnalysisTest
                 checkAlert(alerter, errmsg, td);
             }
         }
-    }
 
-    public static void main(String[] args)
-    {
-        TestRunner.run(suite());
+        aq.stopAndWait();
     }
 }
 

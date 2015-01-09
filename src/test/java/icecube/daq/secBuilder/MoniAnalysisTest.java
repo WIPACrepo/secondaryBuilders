@@ -2,6 +2,7 @@ package icecube.daq.secBuilder;
 
 import icecube.daq.io.PayloadFileReader;
 import icecube.daq.juggler.alert.AlertException;
+import icecube.daq.juggler.alert.AlertQueue;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.IUTCTime;
@@ -29,13 +30,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.*;
-import static org.junit.Assert.*;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.apache.log4j.BasicConfigurator;
+
+import org.junit.*;
+import static org.junit.Assert.*;
 
 public class MoniAnalysisTest
 {
@@ -53,7 +54,7 @@ public class MoniAnalysisTest
 
         alerter.setVerbose(verbose);
 
-        ma.setAlerter(alerter);
+        ma.setAlertQueue(new AlertQueue(alerter));
 
         return ma;
     }
@@ -286,7 +287,7 @@ public class MoniAnalysisTest
 
         MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
         ma.setDOMRegistry(buildDOMRegistry(false));
-        ma.setAlerter(alerter);
+        ma.setAlertQueue(new AlertQueue(alerter));
 
         for (File f : top.listFiles(filter)) {
             try {
@@ -305,9 +306,11 @@ public class MoniAnalysisTest
     {
         MockDOMRegistry reg = buildDOMRegistry(false);
 
+        AlertQueue aq = new AlertQueue(alerter);
+
         MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
         ma.setDOMRegistry(reg);
-        ma.setAlerter(alerter);
+        ma.setAlertQueue(aq);
 
         MoniValidator validator = new MoniValidator(reg);
 
@@ -345,6 +348,8 @@ public class MoniAnalysisTest
         }
         ma.finishMonitoring();
 
+        aq.stopAndWait();
+
         // save last sets of counts
         validator.endTime();
 
@@ -381,9 +386,11 @@ public class MoniAnalysisTest
 
         MockDOMRegistry reg = buildDOMRegistry(true);
 
+        AlertQueue aq = new AlertQueue(alerter);
+
         MoniAnalysis ma = new MoniAnalysis(disp);
         ma.setDOMRegistry(reg);
-        ma.setAlerter(alerter);
+        ma.setAlertQueue(aq);
 
         MoniValidator validator = new MoniValidator(reg);
 
@@ -420,6 +427,8 @@ public class MoniAnalysisTest
             ma.gatherMonitoring(mon);
         }
         ma.finishMonitoring();
+
+        aq.stopAndWait();
 
         // save last sets of counts
         validator.endTime();
@@ -475,13 +484,13 @@ public class MoniAnalysisTest
         MoniAnalysis ma = buildAnalysis(verbose);
         ma.setDOMRegistry(new MockDOMRegistry());
 
-        ma.setAlerter(null);
+        ma.setAlertQueue(null);
 
         try {
             ma.gatherMonitoring(new MockMoniPayload(1234));
             fail("Should not work without alerter");
         } catch (MoniException me) {
-            assertEquals("Bad exception", "Alerter has not been set",
+            assertEquals("Bad exception", "AlertQueue has not been set",
                          me.getMessage());
         }
     }
@@ -492,17 +501,22 @@ public class MoniAnalysisTest
     {
         final boolean verbose = false;
 
-        MoniAnalysis ma = buildAnalysis(verbose);
+        MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
+
+        alerter.setVerbose(verbose);
+
+        AlertQueue aq = new AlertQueue(alerter);
+        ma.setAlertQueue(aq);
         ma.setDOMRegistry(new MockDOMRegistry());
 
-        alerter.close();
+        aq.stopAndWait();
 
         try {
             ma.gatherMonitoring(new MockMoniPayload(1234));
             fail("Should not work without alerter");
         } catch (MoniException me) {
-            assertEquals("Bad exception", "Alerter " + alerter +
-                         " is not active", me.getMessage());
+            assertEquals("Bad exception", "AlertQueue " + aq + " is stopped",
+                         me.getMessage());
         }
     }
 
@@ -608,6 +622,23 @@ public class MoniAnalysisTest
         }
 
         return 34;
+    }
+
+    private void stopQueue(AlertQueue aq)
+    {
+        if (!aq.isStopped()) {
+            aq.stop();
+            for (int i = 0; i < 1000; i++) {
+                if (aq.isStopped()) {
+                    break;
+                }
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException ie) {
+                    break;
+                }
+            }
+        }
     }
 }
 

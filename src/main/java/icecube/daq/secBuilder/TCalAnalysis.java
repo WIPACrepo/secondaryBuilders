@@ -3,6 +3,7 @@ package icecube.daq.secBuilder;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.juggler.alert.Alerter;
 import icecube.daq.juggler.alert.AlertException;
+import icecube.daq.juggler.alert.AlertQueue;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.PayloadException;
@@ -42,7 +43,7 @@ public class TCalAnalysis
 
     private static IDOMRegistry domRegistry;
 
-    private Alerter alerter;
+    private AlertQueue alertQueue;
 
     private HashMap<Long, DOMStats> domStats = new HashMap<Long, DOMStats>();
 
@@ -97,10 +98,11 @@ public class TCalAnalysis
         // make sure we've got everything we need
         if (domRegistry == null) {
             throw new TCalException("DOM registry has not been set");
-        } else if (alerter == null) {
-            throw new MoniException("Alerter has not been set");
-        } else if (!alerter.isActive()) {
-            throw new MoniException("Alerter " + alerter + " is not active");
+        } else if (alertQueue == null) {
+            throw new MoniException("AlertQueue has not been set");
+        } else if (alertQueue.isStopped()) {
+            throw new MoniException("AlertQueue " + alertQueue +
+                                    " is stopped");
         }
 
         // load the payload
@@ -146,7 +148,8 @@ public class TCalAnalysis
         }
 
         try {
-            alerter.send(TCAL_EXCEPTION_NAME, Alerter.Priority.SCP, valueMap);
+            alertQueue.push(TCAL_EXCEPTION_NAME, Alerter.Priority.SCP,
+                            valueMap);
         } catch (AlertException ae) {
             LOG.error("Cannot send " + TCAL_EXCEPTION_NAME, ae);
         } catch (Throwable thr) {
@@ -158,11 +161,19 @@ public class TCalAnalysis
     /**
      * Set the object used to send monitoring quantities
      *
-     * @param alert alerter
+     * @param newQueue new alert queue
      */
-    public void setAlerter(Alerter alerter)
+    public void setAlertQueue(AlertQueue newQueue)
     {
-        this.alerter = alerter;
+        if (alertQueue != null && !alertQueue.isStopped()) {
+            alertQueue.stop();
+        }
+
+        alertQueue = newQueue;
+
+        if (alertQueue != null && alertQueue.isStopped()) {
+            alertQueue.start();
+        }
     }
 
     /**
