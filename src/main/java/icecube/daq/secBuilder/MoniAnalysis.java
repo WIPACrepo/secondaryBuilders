@@ -111,8 +111,7 @@ public class MoniAnalysis
             return map.get(mbKey);
         }
 
-        final String domKey = String.format("%012x", mbKey);
-        DeployedDOM dom = domRegistry.getDom(domKey);
+        DeployedDOM dom = domRegistry.getDom(mbKey);
         if (dom == null) {
             return null;
         }

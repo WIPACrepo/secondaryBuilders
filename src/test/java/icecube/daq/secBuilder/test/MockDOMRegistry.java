@@ -11,26 +11,21 @@ import java.util.Set;
 public class MockDOMRegistry
     implements IDOMRegistry
 {
-    private HashMap<String, DeployedDOM> doms =
-        new HashMap<String, DeployedDOM>();
+    private HashMap<Long, DeployedDOM> doms =
+        new HashMap<Long, DeployedDOM>();
 
     public void addDom(long mbId, int string, int position)
     {
         DeployedDOM dom = new DeployedDOM(mbId, string, position);
-        doms.put(dom.getMainboardId(), dom);
+        doms.put(mbId, dom);
     }
 
-    public short getChannelId(String mbId)
+    public short getChannelId(long mbId)
     {
         throw new Error("Unimplemented");
     }
 
     public DeployedDOM getDom(long mbId)
-    {
-        return doms.get(DOMID.toString(mbId));
-    }
-
-    public DeployedDOM getDom(String mbId)
     {
         return doms.get(mbId);
     }
@@ -40,17 +35,27 @@ public class MockDOMRegistry
         throw new Error("Unimplemented");
     }
 
-    public int getStringMajor(String mbid)
+    public int getStringMajor(long mbid)
     {
         throw new Error("Unimplemented");
     }
 
-    public Set<String> keys()
+    public int getStringMinor(long mbid)
     {
         throw new Error("Unimplemented");
     }
 
-    public double distanceBetweenDOMs(String mbid0, String mbid1)
+    public Set<Long> keys()
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public int size()
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public double distanceBetweenDOMs(long mbid0, long mbid1)
     {
         throw new Error("Unimplemented");
     }

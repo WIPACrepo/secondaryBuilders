@@ -304,8 +304,7 @@ public class TCalAnalysis
         DOMStats(long mbId)
             throws TCalException
         {
-            final String mbStr = String.format("%012x", mbId);
-            DeployedDOM domInfo = domRegistry.getDom(mbStr);
+            DeployedDOM domInfo = domRegistry.getDom(mbId);
             if (domInfo == null) {
                 final String errmsg =
                     String.format("DOM %012x does not exist", mbId);
