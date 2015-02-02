@@ -53,12 +53,15 @@ public class MoniAnalysis
     /** 10 minutes in 10ths of nanoseconds */
     private static final long TEN_MINUTES = 10L * 60L * 10000000000L;
 
+    /** Special value to indicate there is no value for this time */
+    private static final long NO_UTCTIME = Long.MIN_VALUE;
+
     private static IDOMRegistry domRegistry;
 
     private AlertQueue alertQueue;
 
-    private IUTCTime binStartTime = null;
-    private IUTCTime binEndTime = null;
+    private long binStartTime = NO_UTCTIME;
+    private long binEndTime = NO_UTCTIME;
 
     private HashMap<Long, DOMValues> domValues =
         new HashMap<Long, DOMValues>();
@@ -127,16 +130,22 @@ public class MoniAnalysis
      */
     public void finishMonitoring()
     {
-        if (binStartTime == null) {
+        if (binStartTime == NO_UTCTIME) {
             throw new Error("Start time has not been set!");
-        } else if (binEndTime == null) {
+        } else if (binEndTime == NO_UTCTIME) {
             throw new Error("End time has not been set!");
         }
 
-        final String startTime = binStartTime.toDateString();
-        final String endTime = binEndTime.toDateString();
+        final String startTime = UTCTime.toDateString(binStartTime);
+        final String endTime = UTCTime.toDateString(binEndTime);
 
-        sendBinnedMonitorValues(startTime, endTime);
+        if (binEndTime < binStartTime) {
+            LOG.error("Final bin end time " + endTime +
+                      " is earlier than start time " + startTime);
+        } else {
+            sendBinnedMonitorValues(startTime, endTime);
+        }
+
         sendSummaryMonitorValues();
 
         if (fastMoni != null) {
@@ -148,8 +157,8 @@ public class MoniAnalysis
             }
         }
 
-        binStartTime = null;
-        binEndTime = null;
+        binStartTime = NO_UTCTIME;
+        binEndTime = NO_UTCTIME;
         domValues.clear();
     }
 
@@ -189,22 +198,35 @@ public class MoniAnalysis
         }
 
         // if this is the first value, set the binning start time
-        if (binStartTime == null) {
-            binStartTime = payload.getPayloadTimeUTC();
+        if (binStartTime == NO_UTCTIME &&
+            payload.getPayloadTimeUTC() != null)
+        {
+            binStartTime = payload.getPayloadTimeUTC().longValue();
         }
 
         // save previous end time, set current end time
-        IUTCTime prevEnd = binEndTime;
-        binEndTime = payload.getPayloadTimeUTC();
+        long prevEnd = binEndTime;
+        if (payload.getPayloadTimeUTC()  == null) {
+            binEndTime = NO_UTCTIME;
+        } else {
+            binEndTime = payload.getPayloadTimeUTC().longValue();
+        }
 
-        final long endTime = binStartTime.longValue() + TEN_MINUTES;
-        if (payload.getUTCTime() > endTime) {
+        final long nextStart = binStartTime + TEN_MINUTES;
+        if (payload.getUTCTime() > nextStart) {
             // use old bin start/end times as time range
-            sendBinnedMonitorValues(binStartTime.toDateString(),
-                                    prevEnd.toDateString());
+            final String startTime = UTCTime.toDateString(binStartTime);
+            final String endTime = UTCTime.toDateString(prevEnd);
+
+            if (prevEnd < binStartTime) {
+                LOG.error("Bin end time " + endTime +
+                          " is earlier than start time " + startTime);
+            } else {
+                sendBinnedMonitorValues(startTime, endTime);
+            }
 
             // set new bin start
-            binStartTime = new UTCTime(endTime);
+            binStartTime = nextStart;
         }
 
         if (payload instanceof HardwareMonitor) {
@@ -216,6 +238,7 @@ public class MoniAnalysis
             } else {
                 dval.speScalar += mon.getSPEScalar();
                 dval.mpeScalar += mon.getMPEScalar();
+                dval.scalarCount++;
 
                 dval.hvSet = mon.getPMTBaseHVSetValue();
 
@@ -485,24 +508,30 @@ public class MoniAnalysis
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
-            speMap.put(dv.getOmID(), dv.speScalar);
+            long avg;
+
+            if (dv.scalarCount == 0) {
+                avg = 0;
+            } else {
+                avg = dv.speScalar / dv.scalarCount;
+            }
+            speMap.put(dv.getOmID(), avg);
 
             dv.speScalar = 0;
 
             if (dv.dom.isIceTop()) {
-                mpeMap.put(dv.getOmID(), dv.mpeScalar);
+                if (dv.scalarCount == 0) {
+                    avg = 0;
+                } else {
+                    avg = dv.mpeScalar / dv.scalarCount;
+                }
+                mpeMap.put(dv.getOmID(), avg);
 
                 dv.mpeScalar = 0;
             }
-        }
 
-        HashMap mpeMsg = new HashMap();
-        mpeMsg.put("recordingStartTime", startTime);
-        mpeMsg.put("recordingStopTime", endTime);
-        mpeMsg.put("version", SPE_MPE_MONI_VERSION);
-        mpeMsg.put("runNumber", getRunNumber());
-        mpeMsg.put("value", speMap);
-        sendMessage(SPE_MONI_NAME, mpeMsg);
+            dv.scalarCount = 0;
+        }
 
         HashMap speMsg = new HashMap();
         speMsg.put("recordingStartTime", startTime);
@@ -510,8 +539,15 @@ public class MoniAnalysis
         speMsg.put("version", SPE_MPE_MONI_VERSION);
         speMsg.put("runNumber", getRunNumber());
         speMsg.put("value", speMap);
-        speMsg.put("value", mpeMap);
-        sendMessage(MPE_MONI_NAME, speMsg);
+        sendMessage(SPE_MONI_NAME, speMsg);
+
+        HashMap mpeMsg = new HashMap();
+        mpeMsg.put("recordingStartTime", startTime);
+        mpeMsg.put("recordingStopTime", endTime);
+        mpeMsg.put("version", SPE_MPE_MONI_VERSION);
+        mpeMsg.put("runNumber", getRunNumber());
+        mpeMsg.put("value", mpeMap);
+        sendMessage(MPE_MONI_NAME, mpeMsg);
     }
 
     /**
@@ -529,7 +565,8 @@ public class MoniAnalysis
     private void sendMessage(String varname, Map<String, Object> value)
     {
         try {
-            alertQueue.push(varname, Alerter.Priority.SCP, binEndTime, value);
+            alertQueue.push(varname, Alerter.Priority.SCP,
+                            new UTCTime(binEndTime), value);
         } catch (AlertException ae) {
             LOG.error("Cannot send " + varname, ae);
         } catch (Throwable thr) {
@@ -608,6 +645,7 @@ public class MoniAnalysis
 
         long speScalar;
         long mpeScalar;
+        long scalarCount;
 
         int hvSet;
 

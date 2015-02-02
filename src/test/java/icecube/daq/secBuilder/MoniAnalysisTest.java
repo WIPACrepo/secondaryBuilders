@@ -667,7 +667,10 @@ class MoniValidator
     }
 
     void add(ASCIIMonitor mon)
+        throws PayloadException
     {
+        mon.loadPayload();
+
         DeployedDOM dom = reg.getDom(mon.getDomId());
         if (!curAscii.containsKey(dom)) {
             curAscii.put(dom, new RecordCount());
@@ -685,6 +688,11 @@ class MoniValidator
             curHard.put(dom, new MoniTotals());
         }
         curHard.get(dom).add(mon);
+    }
+
+    private static final long computeAverage(long val, int cnt)
+    {
+        return cnt == 0 ? 0L : val / (long) cnt;
     }
 
     void endTime()
@@ -727,15 +735,19 @@ class MoniValidator
                     String omID = String.format("(%d, %d)",
                                                 dk.getStringMajor(),
                                                 dk.getStringMinor());
-                    long val = expMap.get(dk).mpeScalar;
+
+                    MoniTotals mt = expMap.get(dk);
+                    final long avg =
+                        computeAverage(mt.mpeScalar, mt.scalarCount);
+
                     if (dk.getStringMinor() < 60) {
-                        assertFalse("Unexpected MPE value for " + omID,
-                                    map.containsKey(omID));
+                        assertFalse("Unexpected MPE value " + avg + " for " +
+                                    omID, map.containsKey(omID));
                     } else {
-                        assertTrue("Missing MPE value " + val + " for " + omID,
+                        assertTrue("Missing MPE value " + avg + " for " + omID,
                                    map.containsKey(omID));
                         assertEquals("Bad " + omID + " MPE value",
-                                     val, map.get(omID).longValue());
+                                     avg, map.get(omID).longValue());
                     }
                 }
             } else if (nm == MoniAnalysis.SPE_MONI_NAME) {
@@ -744,11 +756,15 @@ class MoniValidator
                     String omID = String.format("(%d, %d)",
                                                 dk.getStringMajor(),
                                                 dk.getStringMinor());
-                    long val = expMap.get(dk).speScalar;
-                    assertTrue("Missing SPE value " + val + " for " + omID,
+
+                    MoniTotals mt = expMap.get(dk);
+                    final long avg =
+                        computeAverage(mt.speScalar, mt.scalarCount);
+
+                    assertTrue("Missing SPE value " + avg + " for " + omID,
                                map.containsKey(omID));
                     assertEquals("Bad " + omID + " SPE value",
-                                 val, map.get(omID).longValue());
+                                 avg, map.get(omID).longValue());
                 }
             } else {
                 // not validating anything except SPE and MPE
@@ -767,6 +783,7 @@ class MoniValidator
     {
         long speScalar;
         long mpeScalar;
+        int scalarCount;
         long hvTotal;
         long power5VTotal;
         int count;
@@ -775,6 +792,7 @@ class MoniValidator
             count++;
             speScalar += mon.getSPEScalar();
             mpeScalar += mon.getMPEScalar();
+            scalarCount++;
             hvTotal += mon.getPMTBaseHVMonitorValue();
             power5VTotal += mon.getADC5VPowerSupply();
         }
