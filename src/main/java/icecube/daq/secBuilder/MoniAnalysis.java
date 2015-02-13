@@ -538,7 +538,7 @@ public class MoniAnalysis
         speMsg.put("recordingStopTime", endTime);
         speMsg.put("version", SPE_MPE_MONI_VERSION);
         speMsg.put("runNumber", getRunNumber());
-        speMsg.put("value", speMap);
+        speMsg.put("rate", speMap);
         sendMessage(SPE_MONI_NAME, speMsg);
 
         HashMap mpeMsg = new HashMap();
@@ -546,7 +546,7 @@ public class MoniAnalysis
         mpeMsg.put("recordingStopTime", endTime);
         mpeMsg.put("version", SPE_MPE_MONI_VERSION);
         mpeMsg.put("runNumber", getRunNumber());
-        mpeMsg.put("value", mpeMap);
+        mpeMsg.put("rate", mpeMap);
         sendMessage(MPE_MONI_NAME, mpeMsg);
     }
 
