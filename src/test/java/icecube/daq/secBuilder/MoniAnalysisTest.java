@@ -727,7 +727,7 @@ class MoniValidator
         for (int i = 0; i < alerter.countAlerts(nm); i++) {
             icecube.daq.secBuilder.test.AlertData ad = alerter.get(nm, i);
             Map<String, Long> map =
-                (Map<String, Long>) ad.getValues().get("value");
+                (Map<String, Long>) ad.getValues().get("rate");
 
             if (nm == MoniAnalysis.MPE_MONI_NAME) {
                 Map<DeployedDOM, MoniTotals> expMap = hardCounts.get(i);
