@@ -42,7 +42,7 @@ public class MoniAnalysisTest
 {
     private static final MockAppender appender =
         //new MockAppender(org.apache.log4j.Level.ALL).setVerbose(true);
-        new MockAppender(org.apache.log4j.Level.WARN).setVerbose(false);
+        new MockAppender(org.apache.log4j.Level.WARN)/*.setVerbose(false)*/;
 
     private static final String tempDir = System.getProperty("java.io.tmpdir");
 
@@ -690,9 +690,9 @@ class MoniValidator
         curHard.get(dom).add(mon);
     }
 
-    private static final long computeAverage(long val, int cnt)
+    private static final double computeAverage(long val, int cnt)
     {
-        return cnt == 0 ? 0L : val / (long) cnt;
+        return cnt == 0 ? 0.0 : (double) val / (double) cnt;
     }
 
     void endTime()
@@ -726,8 +726,8 @@ class MoniValidator
     {
         for (int i = 0; i < alerter.countAlerts(nm); i++) {
             icecube.daq.secBuilder.test.AlertData ad = alerter.get(nm, i);
-            Map<String, Long> map =
-                (Map<String, Long>) ad.getValues().get("rate");
+            Map<String, Double> map =
+                (Map<String, Double>) ad.getValues().get("rate");
 
             if (nm == MoniAnalysis.MPE_MONI_NAME) {
                 Map<DeployedDOM, MoniTotals> expMap = hardCounts.get(i);
@@ -737,7 +737,7 @@ class MoniValidator
                                                 dk.getStringMinor());
 
                     MoniTotals mt = expMap.get(dk);
-                    final long avg =
+                    final double avg =
                         computeAverage(mt.mpeScalar, mt.scalarCount);
 
                     if (dk.getStringMinor() < 60) {
@@ -747,7 +747,7 @@ class MoniValidator
                         assertTrue("Missing MPE value " + avg + " for " + omID,
                                    map.containsKey(omID));
                         assertEquals("Bad " + omID + " MPE value",
-                                     avg, map.get(omID).longValue());
+                                     avg, map.get(omID).doubleValue(), 0.001);
                     }
                 }
             } else if (nm == MoniAnalysis.SPE_MONI_NAME) {
@@ -758,13 +758,13 @@ class MoniValidator
                                                 dk.getStringMinor());
 
                     MoniTotals mt = expMap.get(dk);
-                    final long avg =
+                    final double avg =
                         computeAverage(mt.speScalar, mt.scalarCount);
 
                     assertTrue("Missing SPE value " + avg + " for " + omID,
                                map.containsKey(omID));
                     assertEquals("Bad " + omID + " SPE value",
-                                 avg, map.get(omID).longValue());
+                                 avg, map.get(omID).doubleValue(), 0.001);
                 }
             } else {
                 // not validating anything except SPE and MPE

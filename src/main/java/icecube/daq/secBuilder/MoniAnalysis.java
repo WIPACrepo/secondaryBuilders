@@ -502,18 +502,18 @@ public class MoniAnalysis
      */
     private void sendSPEMPE(String startTime, String endTime)
     {
-        HashMap<String, Long> speMap = new HashMap<String, Long>();
-        HashMap<String, Long> mpeMap = new HashMap<String, Long>();
+        HashMap<String, Double> speMap = new HashMap<String, Double>();
+        HashMap<String, Double> mpeMap = new HashMap<String, Double>();
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
-            long avg;
+            double avg;
 
             if (dv.scalarCount == 0) {
-                avg = 0;
+                avg = 0.0;
             } else {
-                avg = dv.speScalar / dv.scalarCount;
+                avg = (double) dv.speScalar / (double) dv.scalarCount;
             }
             speMap.put(dv.getOmID(), avg);
 
@@ -521,9 +521,9 @@ public class MoniAnalysis
 
             if (dv.dom.isIceTop()) {
                 if (dv.scalarCount == 0) {
-                    avg = 0;
+                    avg = 0.0;
                 } else {
-                    avg = dv.mpeScalar / dv.scalarCount;
+                    avg = (double) dv.mpeScalar / (double) dv.scalarCount;
                 }
                 mpeMap.put(dv.getOmID(), avg);
 
