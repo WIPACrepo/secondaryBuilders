@@ -131,9 +131,9 @@ public class MoniAnalysis
     public void finishMonitoring()
     {
         if (binStartTime == NO_UTCTIME) {
-            throw new Error("Start time has not been set!");
+            throw new Error("Monitoring start time has not been set!");
         } else if (binEndTime == NO_UTCTIME) {
-            throw new Error("End time has not been set!");
+            throw new Error("Monitoring end time has not been set!");
         }
 
         final String startTime = UTCTime.toDateString(binStartTime);
@@ -191,26 +191,14 @@ public class MoniAnalysis
                                     payload, pfe);
         }
 
-        // make sure the payload has a UTCTime value
-        if (payload.getPayloadTimeUTC() == null) {
-            throw new MoniException("Cannot get UTC time from monitoring" +
-                                    " payload " + payload);
-        }
-
         // if this is the first value, set the binning start time
-        if (binStartTime == NO_UTCTIME &&
-            payload.getPayloadTimeUTC() != null)
-        {
-            binStartTime = payload.getPayloadTimeUTC().longValue();
+        if (binStartTime == NO_UTCTIME) {
+            binStartTime = payload.getUTCTime();
         }
 
         // save previous end time, set current end time
         long prevEnd = binEndTime;
-        if (payload.getPayloadTimeUTC()  == null) {
-            binEndTime = NO_UTCTIME;
-        } else {
-            binEndTime = payload.getPayloadTimeUTC().longValue();
-        }
+        binEndTime = payload.getUTCTime();
 
         final long nextStart = binStartTime + TEN_MINUTES;
         if (payload.getUTCTime() > nextStart) {
@@ -236,17 +224,18 @@ public class MoniAnalysis
             if (dval == null) {
                 LOG.error("Cannot find DOM " + mon.getDomId());
             } else {
-                dval.speScalar += mon.getSPEScalar();
-                dval.mpeScalar += mon.getMPEScalar();
-                dval.scalarCount++;
+                synchronized (dval) {
+                    dval.speScalar += mon.getSPEScalar();
+                    dval.mpeScalar += mon.getMPEScalar();
+                    dval.scalarCount++;
 
-                dval.hvSet = mon.getPMTBaseHVSetValue();
+                    dval.hvSet = mon.getPMTBaseHVSetValue();
+                    dval.hvTotal += mon.getPMTBaseHVMonitorValue();
+                    dval.hvCount++;
 
-                dval.hvTotal += mon.getPMTBaseHVMonitorValue();
-                dval.hvCount++;
-
-                dval.power5VTotal += mon.getADC5VPowerSupply();
-                dval.power5VCount++;
+                    dval.power5VTotal += mon.getADC5VPowerSupply();
+                    dval.power5VCount++;
+                }
             }
         } else if (payload instanceof ASCIIMonitor) {
             ASCIIMonitor mon = (ASCIIMonitor) payload;
@@ -313,8 +302,10 @@ public class MoniAnalysis
                     }
                 }
 
-                dval.deadtimeTotal += deadtime;
-                dval.deadtimeCount++;
+                synchronized (dval) {
+                    dval.deadtimeTotal += deadtime;
+                    dval.deadtimeCount++;
+                }
 
                 if (icetop) {
                     if (fastMoni == null && !noJHDFLib) {
@@ -365,33 +356,36 @@ public class MoniAnalysis
             // 'deadtime' is average number of 25ns clock cycles per second
             // a PMT pulse arrived while both ATWDs were busy.
             final double deadtime;
-            if (dv.deadtimeCount == 0) {
-                if (dv.deadtimeTotal > 0) {
-                    LOG.error("Found deadtime " + dv.deadtimeTotal +
-                              " total with 0 count for " + dv.getOmID());
+            synchronized (dv) {
+                if (dv.deadtimeCount == 0) {
+                    if (dv.deadtimeTotal > 0) {
+                        LOG.error("Found deadtime " + dv.deadtimeTotal +
+                                  " total with 0 count for " + dv.getOmID());
+                        dv.deadtimeTotal = 0;
+                    }
+
+                    // skip DOM if there were no reported values
+                    continue;
                 }
-                deadtime = 0.0;
-            } else {
+
                 deadtime = (double) dv.deadtimeTotal /
                     (double) dv.deadtimeCount;
+                dv.deadtimeTotal = 0;
+                dv.deadtimeCount = 0;
             }
 
-            // 'deadFraction' converts 'deadtime' to a fraction of a second
+            // convert 'deadtime' to a fraction of a second
             //   (40000000 = 1000000000 ns/sec / 25 ns)
-            final double deadFraction = deadtime / 40000000.0;
-
-            map.put(dv.getOmID(), deadFraction);
-
-            dv.deadtimeTotal = 0;
-            dv.deadtimeCount = 0;
+            map.put(dv.getOmID(), deadtime / 40000000.0);
         }
 
-        HashMap valueMap = new HashMap();
-        valueMap.put("version", DEADTIME_MONI_VERSION);
-        valueMap.put("runNumber", getRunNumber());
-        valueMap.put("value", map);
-
-        sendMessage(DEADTIME_MONI_NAME, valueMap);
+        if (map.size() > 0) {
+            HashMap valueMap = new HashMap();
+            valueMap.put("version", DEADTIME_MONI_VERSION);
+            valueMap.put("runNumber", getRunNumber());
+            valueMap.put("value", map);
+            sendMessage(DEADTIME_MONI_NAME, valueMap);
+        }
     }
 
     /**
@@ -416,28 +410,32 @@ public class MoniAnalysis
             DOMValues dv = domValues.get(mbKey);
 
             double voltage;
-            if (dv.hvCount == 0) {
-                if (dv.hvTotal > 0) {
-                    LOG.error("Found HV " + dv.hvTotal +
-                              " total with 0 count for " + dv.getOmID());
+            synchronized (dv) {
+                if (dv.hvCount == 0) {
+                    if (dv.hvTotal > 0) {
+                        LOG.error("Found HV " + dv.hvTotal +
+                                  " total with 0 count for " + dv.getOmID());
+                        dv.hvTotal = 0;
+                    }
+
+                    // skip DOM if there were no reported values
+                    continue;
                 }
-                voltage = 0.0;
-            } else {
+
                 voltage = convertToVoltage((double) dv.hvTotal /
                                            (double) dv.hvCount);
+                dv.hvTotal = 0;
+                dv.hvCount = 0;
             }
+
             hvMap.put(dv.getOmID(), voltage);
-
-            dv.hvTotal = 0;
-            dv.hvCount = 0;
-
             if (setMap != null) {
                 double setV = convertToVoltage((double) dv.hvSet);
                 setMap.put(dv.getOmID(), setV);
             }
         }
 
-        if (setMap != null) {
+        if (setMap != null && setMap.size() > 0) {
             HashMap setMsg = new HashMap();
             setMsg.put("recordingStartTime", startTime);
             setMsg.put("recordingStopTime", endTime);
@@ -450,13 +448,15 @@ public class MoniAnalysis
             sentHVSet = true;
         }
 
-        HashMap hvMsg = new HashMap();
-        hvMsg.put("recordingStartTime", startTime);
-        hvMsg.put("recordingStopTime", endTime);
-        hvMsg.put("version", HV_MONI_VERSION);
-        hvMsg.put("runNumber", getRunNumber());
-        hvMsg.put("value", hvMap);
-        sendMessage(HV_MONI_NAME, hvMsg);
+        if (hvMap.size() > 0) {
+            HashMap hvMsg = new HashMap();
+            hvMsg.put("recordingStartTime", startTime);
+            hvMsg.put("recordingStopTime", endTime);
+            hvMsg.put("version", HV_MONI_VERSION);
+            hvMsg.put("runNumber", getRunNumber());
+            hvMsg.put("value", hvMap);
+            sendMessage(HV_MONI_NAME, hvMsg);
+        }
     }
 
     /**
@@ -470,28 +470,33 @@ public class MoniAnalysis
             DOMValues dv = domValues.get(mbKey);
 
             double voltage;
-            if (dv.power5VCount == 0) {
-                if (dv.power5VTotal > 0) {
-                    LOG.error("Found 5V " + dv.power5VTotal +
-                              " total with 0 count for " + dv.getOmID());
+            synchronized (dv) {
+                if (dv.power5VCount == 0) {
+                    if (dv.power5VTotal > 0) {
+                        LOG.error("Found 5V " + dv.power5VTotal +
+                                  " total with 0 count for " + dv.getOmID());
+                        dv.power5VTotal = 0;
+                    }
+
+                    // skip DOM if there were no reported values
+                    continue;
                 }
-                voltage = 0.0;
-            } else {
+
                 voltage = convertToVoltage((double) dv.power5VTotal /
                                            (double) dv.power5VCount);
+                dv.power5VTotal = 0;
+                dv.power5VCount = 0;
             }
             map.put(dv.getOmID(), voltage);
-
-            dv.power5VTotal = 0;
-            dv.power5VCount = 0;
         }
 
-        HashMap valueMap = new HashMap();
-        valueMap.put("version", POWER_MONI_VERSION);
-        valueMap.put("runNumber", getRunNumber());
-        valueMap.put("value", map);
-
-        sendMessage(POWER_MONI_NAME, valueMap);
+        if (map.size() > 0) {
+            HashMap valueMap = new HashMap();
+            valueMap.put("version", POWER_MONI_VERSION);
+            valueMap.put("runNumber", getRunNumber());
+            valueMap.put("value", map);
+            sendMessage(POWER_MONI_NAME, valueMap);
+        }
     }
 
     /**
@@ -508,46 +513,42 @@ public class MoniAnalysis
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
-            double avg;
-
-            if (dv.scalarCount == 0) {
-                avg = 0.0;
-            } else {
-                avg = (double) dv.speScalar / (double) dv.scalarCount;
-            }
-            speMap.put(dv.getOmID(), avg);
-
-            dv.speScalar = 0;
-
-            if (dv.dom.isIceTop()) {
-                if (dv.scalarCount == 0) {
-                    avg = 0.0;
-                } else {
-                    avg = (double) dv.mpeScalar / (double) dv.scalarCount;
+            synchronized (dv) {
+                if (dv.scalarCount > 0) {
+                    speMap.put(dv.getOmID(), (double) dv.speScalar /
+                               (double) dv.scalarCount);
+                    dv.speScalar = 0;
                 }
-                mpeMap.put(dv.getOmID(), avg);
 
-                dv.mpeScalar = 0;
+                if (dv.dom.isIceTop() && dv.scalarCount > 0) {
+                    mpeMap.put(dv.getOmID(), (double) dv.mpeScalar /
+                               (double) dv.scalarCount);
+                    dv.mpeScalar = 0;
+                }
+
+                dv.scalarCount = 0;
             }
-
-            dv.scalarCount = 0;
         }
 
-        HashMap speMsg = new HashMap();
-        speMsg.put("recordingStartTime", startTime);
-        speMsg.put("recordingStopTime", endTime);
-        speMsg.put("version", SPE_MPE_MONI_VERSION);
-        speMsg.put("runNumber", getRunNumber());
-        speMsg.put("rate", speMap);
-        sendMessage(SPE_MONI_NAME, speMsg);
+        if (speMap.size() > 0) {
+            HashMap speMsg = new HashMap();
+            speMsg.put("recordingStartTime", startTime);
+            speMsg.put("recordingStopTime", endTime);
+            speMsg.put("version", SPE_MPE_MONI_VERSION);
+            speMsg.put("runNumber", getRunNumber());
+            speMsg.put("rate", speMap);
+            sendMessage(SPE_MONI_NAME, speMsg);
+        }
 
-        HashMap mpeMsg = new HashMap();
-        mpeMsg.put("recordingStartTime", startTime);
-        mpeMsg.put("recordingStopTime", endTime);
-        mpeMsg.put("version", SPE_MPE_MONI_VERSION);
-        mpeMsg.put("runNumber", getRunNumber());
-        mpeMsg.put("rate", mpeMap);
-        sendMessage(MPE_MONI_NAME, mpeMsg);
+        if (mpeMap.size() > 0) {
+            HashMap mpeMsg = new HashMap();
+            mpeMsg.put("recordingStartTime", startTime);
+            mpeMsg.put("recordingStopTime", endTime);
+            mpeMsg.put("version", SPE_MPE_MONI_VERSION);
+            mpeMsg.put("runNumber", getRunNumber());
+            mpeMsg.put("rate", mpeMap);
+            sendMessage(MPE_MONI_NAME, mpeMsg);
+        }
     }
 
     /**

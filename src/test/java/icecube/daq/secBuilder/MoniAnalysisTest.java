@@ -301,6 +301,64 @@ public class MoniAnalysisTest
     }
 
     @Test
+    public void testEmpty()
+        throws MoniException, PayloadException
+    {
+        MockDOMRegistry reg = buildDOMRegistry(false);
+
+        AlertQueue aq = new AlertQueue(alerter);
+
+        MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
+        ma.setDOMRegistry(reg);
+        ma.setAlertQueue(aq);
+
+        MoniValidator validator = new MoniValidator(reg);
+
+        short[] data = new short[HardwareMonitor.NUM_DATA_ENTRIES];
+
+        long baseDOM = 7;
+        long baseTime = 1234567890;
+        int nextTime = 11;
+        for (int i = 0; i < 1200; i += nextTime, nextTime++) {
+            validator.setTime(i);
+
+            long domId = (baseDOM + i) & 0xf;
+            long time = baseTime + ((long) i * 10000000000L);
+
+            ma.gatherMonitoring(createASCIIRecord(domId, time, "X"));
+        }
+        ma.finishMonitoring();
+
+        aq.stopAndWait();
+
+        // save last sets of counts
+        validator.endTime();
+
+        String[] twice = new String[] {
+            MoniAnalysis.SPE_MONI_NAME,
+            MoniAnalysis.MPE_MONI_NAME,
+            MoniAnalysis.HV_MONI_NAME,
+        };
+
+        HashMap<String, Integer> counts = new HashMap<String, Integer>();
+        counts.put(MoniAnalysis.SPE_MONI_NAME, 0);
+        counts.put(MoniAnalysis.MPE_MONI_NAME, 0);
+        counts.put(MoniAnalysis.HV_MONI_NAME, 0);
+        counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 0);
+        counts.put(MoniAnalysis.POWER_MONI_NAME, 0);
+        counts.put(MoniAnalysis.HV_MONI_NAME + "Set", 0);
+
+        for (String nm : counts.keySet()) {
+            assertEquals("Unexpected alert count for " + nm,
+                         counts.get(nm).intValue(), alerter.countAlerts(nm));
+
+            validator.validate(alerter, nm);
+
+            alerter.clear(nm);
+        }
+    }
+
+    @Test
     public void testInIce()
         throws MoniException, PayloadException
     {
@@ -361,7 +419,7 @@ public class MoniAnalysisTest
 
         HashMap<String, Integer> counts = new HashMap<String, Integer>();
         counts.put(MoniAnalysis.SPE_MONI_NAME, 2);
-        counts.put(MoniAnalysis.MPE_MONI_NAME, 2);
+        counts.put(MoniAnalysis.MPE_MONI_NAME, 0);
         counts.put(MoniAnalysis.HV_MONI_NAME, 2);
         counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
         counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
@@ -559,26 +617,6 @@ public class MoniAnalysisTest
         } catch (MoniException te) {
             assertEquals("Bad exception", "Cannot load monitoring payload " +
                          pay, te.getMessage());
-        }
-    }
-
-    @Test
-    public void testBadPayloadUTC()
-        throws MoniException, PayloadException
-    {
-        final boolean verbose = false;
-
-        MoniAnalysis ma = buildAnalysis(verbose);
-        ma.setDOMRegistry(new MockDOMRegistry());
-
-        MockMoniPayload pay = new MockMoniPayload(Long.MIN_VALUE);
-
-        try {
-            ma.gatherMonitoring(pay);
-            fail("Should not work due to bad payload");
-        } catch (MoniException te) {
-            assertEquals("Bad exception", "Cannot get UTC time from" +
-                         " monitoring payload " + pay, te.getMessage());
         }
     }
 
