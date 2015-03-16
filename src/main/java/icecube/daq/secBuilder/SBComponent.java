@@ -50,7 +50,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15333 2015-01-09 22:08:50Z dglo $
+ * @version $Id: SBComponent.java 15474 2015-03-16 16:22:39Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -472,7 +472,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15333 2015-01-09 22:08:50Z dglo $";
+        return "$Id: SBComponent.java 15474 2015-03-16 16:22:39Z dglo $";
     }
 
     /**
@@ -560,7 +560,8 @@ public class SBComponent extends DAQComponent
         throws DAQCompException
     {
         if (!runData.containsKey(runNum)) {
-            throw new DAQCompException("No data found for run " + runNum);
+            throw new DAQCompException("No final counts found for run " +
+                                       runNum + "; state is " + getState());
         }
 
         return runData.get(runNum).toArray();
