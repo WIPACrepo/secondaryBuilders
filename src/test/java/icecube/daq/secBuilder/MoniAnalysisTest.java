@@ -12,6 +12,7 @@ import icecube.daq.payload.PayloadRegistry;
 import icecube.daq.payload.impl.ASCIIMonitor;
 import icecube.daq.payload.impl.HardwareMonitor;
 import icecube.daq.payload.impl.Monitor;
+import icecube.daq.secBuilder.test.AlertData;
 import icecube.daq.secBuilder.test.MockAlerter;
 import icecube.daq.secBuilder.test.MockAppender;
 import icecube.daq.secBuilder.test.MockDOMRegistry;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -728,9 +730,31 @@ class MoniValidator
         curHard.get(dom).add(mon);
     }
 
-    private static final double computeAverage(long val, int cnt)
+    private static final double computeAverage(List<Integer> list)
     {
-        return cnt == 0 ? 0.0 : (double) val / (double) cnt;
+        if (list.isEmpty()) {
+            return 0.0;
+        }
+
+        long total = 0;
+        for (Integer val : list) {
+            total += val;
+        }
+        return (double) total / (double) list.size();
+    }
+
+    private static final double computeStdDev(List<Integer> list, double mean)
+    {
+        if (list.size() < 2) {
+            return 0.0;
+        }
+
+        double total = 0.0;
+        for (Integer val : list) {
+            final double tmp = val - mean;
+            total += tmp * tmp;
+        }
+        return Math.sqrt(total / (list.size() - 1));
     }
 
     void endTime()
@@ -763,9 +787,11 @@ class MoniValidator
     void validate(MockAlerter alerter, String nm)
     {
         for (int i = 0; i < alerter.countAlerts(nm); i++) {
-            icecube.daq.secBuilder.test.AlertData ad = alerter.get(nm, i);
-            Map<String, Double> map =
-                (Map<String, Double>) ad.getValues().get("rate");
+            AlertData ad = alerter.get(nm, i);
+            Map<String, Double> rateMap =
+                ad.getMap(MoniAnalysis.MONI_RATE_FIELD);
+            Map<String, Double> errMap =
+                ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
 
             if (nm == MoniAnalysis.MPE_MONI_NAME) {
                 Map<DeployedDOM, MoniTotals> expMap = hardCounts.get(i);
@@ -775,17 +801,24 @@ class MoniValidator
                                                 dk.getStringMinor());
 
                     MoniTotals mt = expMap.get(dk);
-                    final double avg =
-                        computeAverage(mt.mpeScalar, mt.scalarCount);
+
+                    final double avg = computeAverage(mt.mpeScalar);
 
                     if (dk.getStringMinor() < 60) {
                         assertFalse("Unexpected MPE value " + avg + " for " +
-                                    omID, map.containsKey(omID));
+                                    omID, rateMap.containsKey(omID));
                     } else {
                         assertTrue("Missing MPE value " + avg + " for " + omID,
-                                   map.containsKey(omID));
+                                   rateMap.containsKey(omID));
+
                         assertEquals("Bad " + omID + " MPE value",
-                                     avg, map.get(omID).doubleValue(), 0.001);
+                                     avg, rateMap.get(omID).doubleValue(),
+                                     0.001);
+
+                        final double stdDev = computeStdDev(mt.mpeScalar, avg);
+                        assertEquals("Bad " + omID + " MPE value",
+                                     stdDev, errMap.get(omID).doubleValue(),
+                                     0.001);
                     }
                 }
             } else if (nm == MoniAnalysis.SPE_MONI_NAME) {
@@ -796,13 +829,17 @@ class MoniValidator
                                                 dk.getStringMinor());
 
                     MoniTotals mt = expMap.get(dk);
-                    final double avg =
-                        computeAverage(mt.speScalar, mt.scalarCount);
+                    final double avg = computeAverage(mt.speScalar);
 
                     assertTrue("Missing SPE value " + avg + " for " + omID,
-                               map.containsKey(omID));
+                               rateMap.containsKey(omID));
                     assertEquals("Bad " + omID + " SPE value",
-                                 avg, map.get(omID).doubleValue(), 0.001);
+                                 avg, rateMap.get(omID).doubleValue(), 0.001);
+
+                    final double stdDev = computeStdDev(mt.speScalar, avg);
+                    assertEquals("Bad " + omID + " SPE value",
+                                 stdDev, errMap.get(omID).doubleValue(),
+                                 0.001);
                 }
             } else {
                 // not validating anything except SPE and MPE
@@ -819,8 +856,8 @@ class MoniValidator
 
     class MoniTotals
     {
-        long speScalar;
-        long mpeScalar;
+        ArrayList<Integer> speScalar = new ArrayList<Integer>();
+        ArrayList<Integer> mpeScalar = new ArrayList<Integer>();
         int scalarCount;
         long hvTotal;
         long power5VTotal;
@@ -828,9 +865,8 @@ class MoniValidator
         void add(HardwareMonitor mon)
         {
             count++;
-            speScalar += mon.getSPEScalar();
-            mpeScalar += mon.getMPEScalar();
-            scalarCount++;
+            speScalar.add(mon.getSPEScalar());
+            mpeScalar.add(mon.getMPEScalar());
             hvTotal += mon.getPMTBaseHVMonitorValue();
             power5VTotal += mon.getADC5VPowerSupply();
         }
@@ -842,7 +878,7 @@ class MoniValidator
 
             double hvVolt = (double) hvTotal * cvtVolt;
             double powerVolt = (double) power5VTotal *cvtVolt;
-            return String.format("spe %d mpe %d hv %f power %f", speScalar,
+            return String.format("spe %s mpe %s hv %f power %f", speScalar,
                                  mpeScalar, hvVolt, powerVolt);
         }
     }

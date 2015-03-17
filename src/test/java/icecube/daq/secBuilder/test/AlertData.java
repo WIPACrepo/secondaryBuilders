@@ -23,6 +23,12 @@ public class AlertData
     public String getName() { return varname; }
     public Alerter.Priority getPriority() { return priority; }
     public String getDate() { return dateStr; }
+
+    public Map<String, Double> getMap(String fieldName)
+    {
+        return (Map<String, Double>) values.get(fieldName);
+    }
+
     public Map<String, Object> getValues() { return values; }
 
     public String toString()

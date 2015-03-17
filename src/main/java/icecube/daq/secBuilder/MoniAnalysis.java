@@ -16,6 +16,7 @@ import icecube.daq.util.IDOMRegistry;
 import icecube.daq.util.DeployedDOM;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,6 +47,11 @@ public class MoniAnalysis
     public static final String MPE_MONI_NAME = "dom_mpe_moni_rate";
     /** SPE/MPE monitoring message version number */
     public static final int SPE_MPE_MONI_VERSION = 0;
+
+    /** Name of field used to send SPE/MPE rates */
+    public static final String MONI_RATE_FIELD = "rate";
+    /** Name of field used to send SPE/MPE rate error */
+    public static final String MONI_ERROR_FIELD = "rate_error";
 
     /** Logger */
     private static final Log LOG = LogFactory.getLog(MoniAnalysis.class);
@@ -225,9 +231,8 @@ public class MoniAnalysis
                 LOG.error("Cannot find DOM " + mon.getDomId());
             } else {
                 synchronized (dval) {
-                    dval.speScalar += mon.getSPEScalar();
-                    dval.mpeScalar += mon.getMPEScalar();
-                    dval.scalarCount++;
+                    dval.addSPEScalar(mon.getSPEScalar());
+                    dval.addMPEScalar(mon.getMPEScalar());
 
                     dval.hvSet = mon.getPMTBaseHVSetValue();
                     dval.hvTotal += mon.getPMTBaseHVMonitorValue();
@@ -507,46 +512,52 @@ public class MoniAnalysis
      */
     private void sendSPEMPE(String startTime, String endTime)
     {
-        HashMap<String, Double> speMap = new HashMap<String, Double>();
-        HashMap<String, Double> mpeMap = new HashMap<String, Double>();
+        HashMap<String, Double> speRate = new HashMap<String, Double>();
+        HashMap<String, Double> speRateError = new HashMap<String, Double>();
+        HashMap<String, Double> mpeRate = new HashMap<String, Double>();
+        HashMap<String, Double> mpeRateError = new HashMap<String, Double>();
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
             synchronized (dv) {
-                if (dv.scalarCount > 0) {
-                    speMap.put(dv.getOmID(), (double) dv.speScalar /
-                               (double) dv.scalarCount);
-                    dv.speScalar = 0;
+                if (dv.hasSPE()) {
+                    double mean = dv.getSPEMean();
+
+                    speRate.put(dv.getOmID(), mean);
+                    speRateError.put(dv.getOmID(), dv.getSPEStdDev(mean));
+                    dv.resetSPE();
                 }
 
-                if (dv.dom.isIceTop() && dv.scalarCount > 0) {
-                    mpeMap.put(dv.getOmID(), (double) dv.mpeScalar /
-                               (double) dv.scalarCount);
-                    dv.mpeScalar = 0;
-                }
+                if (dv.dom.isIceTop() && dv.hasMPE()) {
+                    double mean = dv.getMPEMean();
 
-                dv.scalarCount = 0;
+                    mpeRate.put(dv.getOmID(), mean);
+                    mpeRateError.put(dv.getOmID(), dv.getMPEStdDev(mean));
+                    dv.resetMPE();
+                }
             }
         }
 
-        if (speMap.size() > 0) {
+        if (speRate.size() > 0) {
             HashMap speMsg = new HashMap();
             speMsg.put("recordingStartTime", startTime);
             speMsg.put("recordingStopTime", endTime);
             speMsg.put("version", SPE_MPE_MONI_VERSION);
             speMsg.put("runNumber", getRunNumber());
-            speMsg.put("rate", speMap);
+            speMsg.put(MONI_RATE_FIELD, speRate);
+            speMsg.put(MONI_ERROR_FIELD, speRateError);
             sendMessage(SPE_MONI_NAME, speMsg);
         }
 
-        if (mpeMap.size() > 0) {
+        if (mpeRate.size() > 0) {
             HashMap mpeMsg = new HashMap();
             mpeMsg.put("recordingStartTime", startTime);
             mpeMsg.put("recordingStopTime", endTime);
             mpeMsg.put("version", SPE_MPE_MONI_VERSION);
             mpeMsg.put("runNumber", getRunNumber());
-            mpeMsg.put("rate", mpeMap);
+            mpeMsg.put(MONI_RATE_FIELD, mpeRate);
+            mpeMsg.put(MONI_ERROR_FIELD, mpeRateError);
             sendMessage(MPE_MONI_NAME, mpeMsg);
         }
     }
@@ -638,15 +649,91 @@ public class MoniAnalysis
     }
 
     /**
+     * MPE/SPE scalar values
+     */
+    class ScalarValues
+    {
+        private ArrayList<Integer> data = new ArrayList<Integer>();
+
+        /**
+         * Add a scalar value
+         *
+         * @param val value to add
+         */
+        void add(int val)
+        {
+            data.add(val);
+        }
+
+        /**
+         * Does the list contain one or more values?
+         *
+         * @return <tt>true</tt> if there is data
+         */
+        boolean isEmpty()
+        {
+            return data.isEmpty();
+        }
+
+        /**
+         * Calculate the mean value
+         *
+         * @return mean value
+         */
+        double mean()
+        {
+            if (data.isEmpty()) {
+                return 0.0;
+            }
+
+            long sum = 0;
+            for (Integer v : data) {
+                sum += v;
+            }
+
+            return (double) sum / (double) data.size();
+        }
+
+        /**
+         * Clear the list of values
+         */
+        void reset()
+        {
+            data.clear();
+        }
+
+        /**
+         * Calculate the standard deviation
+         *
+         * @return mean previoously calculated mean value
+         *
+         * @return standard deviation
+         */
+        double standardDeviation(double mean)
+        {
+            if (data.size() < 2) {
+                return 0.0;
+            }
+
+            double sum = 0.0;
+            for (Integer v : data) {
+                final double tmp = v.doubleValue() - mean;
+                sum += tmp * tmp;
+            }
+
+            return Math.sqrt(sum / (data.size() - 1));
+        }
+    }
+
+    /**
      * Per-DOM monitoring data
      */
     class DOMValues
     {
         DeployedDOM dom;
 
-        long speScalar;
-        long mpeScalar;
-        long scalarCount;
+        ScalarValues speScalar = new ScalarValues();
+        ScalarValues mpeScalar = new ScalarValues();
 
         int hvSet;
 
@@ -668,6 +755,110 @@ public class MoniAnalysis
         }
 
         /**
+         * Add an MPE scaler value
+         *
+         * @param val value to add
+         */
+        public void addMPEScalar(int val)
+        {
+            mpeScalar.add(val);
+        }
+
+        /**
+         * Add an SPE scaler value
+         *
+         * @param val value to add
+         */
+        public void addSPEScalar(int val)
+        {
+            speScalar.add(val);
+        }
+
+        /**
+         * Get the mean value for the current list of MPE values
+         *
+         * @return mean value
+         */
+        public double getMPEMean()
+        {
+            return mpeScalar.mean();
+        }
+
+        /**
+         * Get the standard deviation for the current list of MPE values
+         *
+         * @param mean mean value of current list of values
+         *
+         * @return standard deviation
+         */
+        public double getMPEStdDev(double mean)
+        {
+            return mpeScalar.standardDeviation(mean);
+        }
+
+        /**
+         * Get the mean value for the current list of SPE values
+         *
+         * @return mean value
+         */
+        public double getSPEMean()
+        {
+            return speScalar.mean();
+        }
+
+        /**
+         * Get the standard deviation for the current list of SPE values
+         *
+         * @param mean mean value of current list of values
+         *
+         * @return standard deviation
+         */
+        public double getSPEStdDev(double mean)
+        {
+            return speScalar.standardDeviation(mean);
+        }
+
+        /**
+         * Has DOM sent one or more MPE values?
+         *
+         * @return <tt>true</tt> if there is MPE data
+         */
+        public boolean hasMPE()
+        {
+            return mpeScalar != null && !mpeScalar.isEmpty();
+        }
+
+        /**
+         * Has DOM sent one or more SPE values?
+         *
+         * @return <tt>true</tt> if there is SPE data
+         */
+        public boolean hasSPE()
+        {
+            return speScalar != null && !speScalar.isEmpty();
+        }
+
+        /**
+         * Clear the list of MPE values
+         */
+        public void resetMPE()
+        {
+            if (mpeScalar != null) {
+                mpeScalar.reset();
+            }
+        }
+
+        /**
+         * Clear the list of MPE values
+         */
+        public void resetSPE()
+        {
+            if (speScalar != null) {
+                speScalar.reset();
+            }
+        }
+
+        /**
          * Get the OM ID
          *
          * @return "(string, position)"
@@ -684,7 +875,7 @@ public class MoniAnalysis
 
         public String toString()
         {
-            return String.format("%s: spe %d mpe %d hv %d hvTot %d hvCnt %d" +
+            return String.format("%s: spe %s mpe %s hv %d hvTot %d hvCnt %d" +
                                  " 5VTot %d 5VCnt %d deadTot %d deadCnt %d",
                                  getOmID(), speScalar, mpeScalar, hvSet,
                                  hvTotal, hvCount, power5VTotal, power5VCount,
