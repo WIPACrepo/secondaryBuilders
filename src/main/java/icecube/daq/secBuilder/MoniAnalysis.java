@@ -94,7 +94,7 @@ public class MoniAnalysis
      *
      * @return deadtime
      */
-    public static final double convertToDeadtime(long total, long count)
+    public static final double convertToDeadtime(long total, int count)
     {
         return ((double) total / (double) count) / 40000000.0;
     }
@@ -109,7 +109,7 @@ public class MoniAnalysis
      */
     public static final double convertToMBPower(long total, int count)
     {
-        return convertToVoltage(total, count);
+        return ((double) total / (double) count) * 0.002 * (25.0 / 10.0);
     }
 
     /**
@@ -520,7 +520,7 @@ public class MoniAnalysis
                     continue;
                 }
 
-                voltage = convertToVoltage(dv.power5VTotal, dv.power5VCount);
+                voltage = convertToMBPower(dv.power5VTotal, dv.power5VCount);
                 dv.power5VTotal = 0;
                 dv.power5VCount = 0;
             }
