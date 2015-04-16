@@ -32,14 +32,14 @@ public class MoniAnalysis
     public static final int DEADTIME_MONI_VERSION = 0;
 
     /** 5v message variable name */
-    public static final String HV_MONI_NAME = "dom_mainboardPowerHV";
+    public static final String HV_MONI_NAME = "dom_pmt_hv";
     /** 5v setting message variable name */
-    public static final String HVSET_MONI_NAME = "dom_mainboardPowerHVSet";
+    public static final String HVSET_MONI_NAME = "dom_pmt_hv_set";
     /** 5v message version number */
     public static final int HV_MONI_VERSION = 0;
 
     /** Power supply voltage message variable name */
-    public static final String POWER_MONI_NAME = "dom_mainboardPowerRail";
+    public static final String POWER_MONI_NAME = "dom_mainboard_power_rail";
     /** Power supply voltage message version number */
     public static final int POWER_MONI_VERSION = 0;
 
