@@ -124,7 +124,7 @@ public class MoniAnalysis
     {
         final double val5V = (2048.0 / 4095.0) * (5.2 / 2.0);
 
-        return ((double) total / (double) count) * val5V;
+        return ((double) total / (double) count) / 2.0;
     }
 
     public boolean disableIceTopFastMoni()
