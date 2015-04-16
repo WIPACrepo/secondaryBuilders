@@ -33,6 +33,8 @@ public class MoniAnalysis
 
     /** 5v message variable name */
     public static final String HV_MONI_NAME = "dom_mainboardPowerHV";
+    /** 5v setting message variable name */
+    public static final String HVSET_MONI_NAME = "dom_mainboardPowerHVSet";
     /** 5v message version number */
     public static final int HV_MONI_VERSION = 0;
 
@@ -48,10 +50,12 @@ public class MoniAnalysis
     /** SPE/MPE monitoring message version number */
     public static final int SPE_MPE_MONI_VERSION = 0;
 
-    /** Name of field used to send SPE/MPE rates */
-    public static final String MONI_RATE_FIELD = "rate";
     /** Name of field used to send SPE/MPE rate error */
     public static final String MONI_ERROR_FIELD = "rate_error";
+    /** Name of field used to send SPE/MPE rates */
+    public static final String MONI_RATE_FIELD = "rate";
+    /** Name of field used to send other values */
+    public static final String MONI_VALUE_FIELD = "value";
 
     /** Logger */
     private static final Log LOG = LogFactory.getLog(MoniAnalysis.class);
@@ -83,17 +87,44 @@ public class MoniAnalysis
     }
 
     /**
-     * Convert a DOM reading to an actual voltage
+     * Convert a DOM deadtime reading to a fraction of a second
      *
-     * @param reading
+     * @param total total of all values
+     * @param count number of values
+     *
+     * @return deadtime
+     */
+    public static final double convertToDeadtime(long total, long count)
+    {
+        return ((double) total / (double) count) / 40000000.0;
+    }
+
+    /**
+     * Convert a DOM mainboard power reading to a voltage
+     *
+     * @param total total of all values
+     * @param count number of values
      *
      * @return voltage
      */
-    private static double convertToVoltage(double reading)
+    public static final double convertToMBPower(long total, int count)
+    {
+        return convertToVoltage(total, count);
+    }
+
+    /**
+     * Convert a DOM reading to an actual voltage
+     *
+     * @param total total of all values
+     * @param count number of values
+     *
+     * @return voltage
+     */
+    public static final double convertToVoltage(long total, int count)
     {
         final double val5V = (2048.0 / 4095.0) * (5.2 / 2.0);
 
-        return (double) reading * val5V;
+        return ((double) total / (double) count) * val5V;
     }
 
     public boolean disableIceTopFastMoni()
@@ -234,7 +265,10 @@ public class MoniAnalysis
                     dval.addSPEScalar(mon.getSPEScalar());
                     dval.addMPEScalar(mon.getMPEScalar());
 
-                    dval.hvSet = mon.getPMTBaseHVSetValue();
+                    if (dval.hvCount == 0) {
+                        // only grab 'set' value once
+                        dval.hvSet = mon.getPMTBaseHVSetValue();
+                    }
                     dval.hvTotal += mon.getPMTBaseHVMonitorValue();
                     dval.hvCount++;
 
@@ -388,7 +422,7 @@ public class MoniAnalysis
             HashMap valueMap = new HashMap();
             valueMap.put("version", DEADTIME_MONI_VERSION);
             valueMap.put("runNumber", getRunNumber());
-            valueMap.put("value", map);
+            valueMap.put(MONI_VALUE_FIELD, map);
             sendMessage(DEADTIME_MONI_NAME, valueMap);
         }
     }
@@ -427,15 +461,14 @@ public class MoniAnalysis
                     continue;
                 }
 
-                voltage = convertToVoltage((double) dv.hvTotal /
-                                           (double) dv.hvCount);
+                voltage = convertToVoltage(dv.hvTotal, dv.hvCount);
                 dv.hvTotal = 0;
                 dv.hvCount = 0;
             }
 
             hvMap.put(dv.getOmID(), voltage);
             if (setMap != null) {
-                double setV = convertToVoltage((double) dv.hvSet);
+                double setV = convertToVoltage(dv.hvSet, 1);
                 setMap.put(dv.getOmID(), setV);
             }
         }
@@ -446,8 +479,8 @@ public class MoniAnalysis
             setMsg.put("recordingStopTime", endTime);
             setMsg.put("version", HV_MONI_VERSION);
             setMsg.put("runNumber", getRunNumber());
-            setMsg.put("value", setMap);
-            sendMessage(HV_MONI_NAME + "Set", setMsg);
+            setMsg.put(MONI_VALUE_FIELD, setMap);
+            sendMessage(HVSET_MONI_NAME, setMsg);
 
             // remember that we sent the HV settings
             sentHVSet = true;
@@ -459,7 +492,7 @@ public class MoniAnalysis
             hvMsg.put("recordingStopTime", endTime);
             hvMsg.put("version", HV_MONI_VERSION);
             hvMsg.put("runNumber", getRunNumber());
-            hvMsg.put("value", hvMap);
+            hvMsg.put(MONI_VALUE_FIELD, hvMap);
             sendMessage(HV_MONI_NAME, hvMsg);
         }
     }
@@ -487,8 +520,7 @@ public class MoniAnalysis
                     continue;
                 }
 
-                voltage = convertToVoltage((double) dv.power5VTotal /
-                                           (double) dv.power5VCount);
+                voltage = convertToVoltage(dv.power5VTotal, dv.power5VCount);
                 dv.power5VTotal = 0;
                 dv.power5VCount = 0;
             }
@@ -499,7 +531,7 @@ public class MoniAnalysis
             HashMap valueMap = new HashMap();
             valueMap.put("version", POWER_MONI_VERSION);
             valueMap.put("runNumber", getRunNumber());
-            valueMap.put("value", map);
+            valueMap.put(MONI_VALUE_FIELD, map);
             sendMessage(POWER_MONI_NAME, valueMap);
         }
     }

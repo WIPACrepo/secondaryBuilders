@@ -334,7 +334,7 @@ public class MoniAnalysisTest
         aq.stopAndWait();
 
         // save last sets of counts
-        validator.endTime();
+        validator.endBin();
 
         String[] twice = new String[] {
             MoniAnalysis.SPE_MONI_NAME,
@@ -348,15 +348,16 @@ public class MoniAnalysisTest
         counts.put(MoniAnalysis.HV_MONI_NAME, 0);
         counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 0);
         counts.put(MoniAnalysis.POWER_MONI_NAME, 0);
-        counts.put(MoniAnalysis.HV_MONI_NAME + "Set", 0);
+        counts.put(MoniAnalysis.HVSET_MONI_NAME, 0);
 
-        for (String nm : counts.keySet()) {
-            assertEquals("Unexpected alert count for " + nm,
-                         counts.get(nm).intValue(), alerter.countAlerts(nm));
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            assertEquals("Unexpected alert count for " + e.getKey(),
+                         e.getValue().intValue(),
+                         alerter.countAlerts(e.getKey()));
 
-            validator.validate(alerter, nm);
+            validator.validate(alerter, e.getKey());
 
-            alerter.clear(nm);
+            alerter.clear(e.getKey());
         }
     }
 
@@ -411,7 +412,7 @@ public class MoniAnalysisTest
         aq.stopAndWait();
 
         // save last sets of counts
-        validator.endTime();
+        validator.endBin();
 
         String[] twice = new String[] {
             MoniAnalysis.SPE_MONI_NAME,
@@ -425,15 +426,16 @@ public class MoniAnalysisTest
         counts.put(MoniAnalysis.HV_MONI_NAME, 2);
         counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
         counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
-        counts.put(MoniAnalysis.HV_MONI_NAME + "Set", 1);
+        counts.put(MoniAnalysis.HVSET_MONI_NAME, 1);
 
-        for (String nm : counts.keySet()) {
-            assertEquals("Unexpected alert count for " + nm,
-                         counts.get(nm).intValue(), alerter.countAlerts(nm));
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            assertEquals("Unexpected alert count for " + e.getKey(),
+                         e.getValue().intValue(),
+                         alerter.countAlerts(e.getKey()));
 
-            validator.validate(alerter, nm);
+            validator.validate(alerter, e.getKey());
 
-            alerter.clear(nm);
+            alerter.clear(e.getKey());
         }
     }
 
@@ -491,7 +493,7 @@ public class MoniAnalysisTest
         aq.stopAndWait();
 
         // save last sets of counts
-        validator.endTime();
+        validator.endBin();
 
         String[] twice = new String[] {
             MoniAnalysis.SPE_MONI_NAME,
@@ -505,15 +507,16 @@ public class MoniAnalysisTest
         counts.put(MoniAnalysis.HV_MONI_NAME, 2);
         counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
         counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
-        counts.put(MoniAnalysis.HV_MONI_NAME + "Set", 1);
+        counts.put(MoniAnalysis.HVSET_MONI_NAME, 1);
 
-        for (String nm : counts.keySet()) {
-            assertEquals("Unexpected alert count for " + nm,
-                         counts.get(nm).intValue(), alerter.countAlerts(nm));
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            assertEquals("Unexpected alert count for " + e.getKey(),
+                         e.getValue().intValue(),
+                         alerter.countAlerts(e.getKey()));
 
-            validator.validate(alerter, nm);
+            validator.validate(alerter, e.getKey());
 
-            alerter.clear(nm);
+            alerter.clear(e.getKey());
         }
     }
 
@@ -684,26 +687,16 @@ public class MoniAnalysisTest
 
 class MoniValidator
 {
-    private static boolean warned;
-
     private MockDOMRegistry reg;
 
     private long curTime = Long.MIN_VALUE;
-    private ArrayList<Map<DeployedDOM, RecordCount>> asciiCounts =
-        new ArrayList<Map<DeployedDOM, RecordCount>>();
-    private ArrayList<Map<DeployedDOM, MoniTotals>> hardCounts =
+    private ArrayList<Map<DeployedDOM, MoniTotals>> allTotals =
         new ArrayList<Map<DeployedDOM, MoniTotals>>();
-    private HashMap<DeployedDOM, RecordCount> curAscii;
-    private HashMap<DeployedDOM, MoniTotals> curHard;
+    private HashMap<DeployedDOM, MoniTotals> curTotals;
 
     MoniValidator(MockDOMRegistry reg)
     {
         this.reg = reg;
-
-        if (!warned) {
-            System.err.println("Only validating SPE and MPE values");
-            warned = true;
-        }
     }
 
     void add(ASCIIMonitor mon)
@@ -712,10 +705,10 @@ class MoniValidator
         mon.loadPayload();
 
         DeployedDOM dom = reg.getDom(mon.getDomId());
-        if (!curAscii.containsKey(dom)) {
-            curAscii.put(dom, new RecordCount());
+        if (!curTotals.containsKey(dom)) {
+            curTotals.put(dom, new MoniTotals());
         }
-        curAscii.get(dom).inc();
+        curTotals.get(dom).add(mon);
     }
 
     void add(HardwareMonitor mon)
@@ -724,10 +717,10 @@ class MoniValidator
         mon.loadPayload();
 
         DeployedDOM dom = reg.getDom(mon.getDomId());
-        if (!curHard.containsKey(dom)) {
-            curHard.put(dom, new MoniTotals());
+        if (!curTotals.containsKey(dom)) {
+            curTotals.put(dom, new MoniTotals());
         }
-        curHard.get(dom).add(mon);
+        curTotals.get(dom).add(mon);
     }
 
     private static final double computeAverage(List<Integer> list)
@@ -757,28 +750,19 @@ class MoniValidator
         return Math.sqrt(total / (list.size() - 1));
     }
 
-    void endTime()
+    void endBin()
     {
-        if (curAscii != null) {
-            asciiCounts.add(curAscii);
-        }
-        if (curHard != null) {
-            hardCounts.add(curHard);
+        if (curTotals != null) {
+            allTotals.add(curTotals);
         }
     }
 
     void setTime(long time)
     {
         if (time > curTime + 600) {
-            if (curAscii != null) {
-                asciiCounts.add(curAscii);
-            }
-            curAscii = new HashMap<DeployedDOM, RecordCount>();
+            endBin();
 
-            if (curHard != null) {
-                hardCounts.add(curHard);
-            }
-            curHard = new HashMap<DeployedDOM, MoniTotals>();
+            curTotals = new HashMap<DeployedDOM, MoniTotals>();
 
             curTime = time;
         }
@@ -786,100 +770,305 @@ class MoniValidator
 
     void validate(MockAlerter alerter, String nm)
     {
+        if (alerter.countAlerts(nm) == 1 && allTotals.size() > 1) {
+            validateTotals(alerter, nm);
+        } else {
+            validateBins(alerter, nm);
+        }
+    }
+
+    void validateBins(MockAlerter alerter, String nm)
+    {
         for (int i = 0; i < alerter.countAlerts(nm); i++) {
             AlertData ad = alerter.get(nm, i);
-            Map<String, Double> rateMap =
-                ad.getMap(MoniAnalysis.MONI_RATE_FIELD);
-            Map<String, Double> errMap =
-                ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
+            Map<DeployedDOM, MoniTotals> expMap = allTotals.get(i);
 
             if (nm == MoniAnalysis.MPE_MONI_NAME) {
-                Map<DeployedDOM, MoniTotals> expMap = hardCounts.get(i);
-                for (DeployedDOM dk : expMap.keySet()) {
-                    String omID = String.format("(%d, %d)",
-                                                dk.getStringMajor(),
-                                                dk.getStringMinor());
-
-                    MoniTotals mt = expMap.get(dk);
-
-                    final double avg = computeAverage(mt.mpeScalar);
-
-                    if (dk.getStringMinor() < 60) {
-                        assertFalse("Unexpected MPE value " + avg + " for " +
-                                    omID, rateMap.containsKey(omID));
-                    } else {
-                        assertTrue("Missing MPE value " + avg + " for " + omID,
-                                   rateMap.containsKey(omID));
-
-                        assertEquals("Bad " + omID + " MPE value",
-                                     avg, rateMap.get(omID).doubleValue(),
-                                     0.001);
-
-                        final double stdDev = computeStdDev(mt.mpeScalar, avg);
-                        assertEquals("Bad " + omID + " MPE value",
-                                     stdDev, errMap.get(omID).doubleValue(),
-                                     0.001);
-                    }
-                }
+                validateMPE(ad, expMap);
             } else if (nm == MoniAnalysis.SPE_MONI_NAME) {
-                Map<DeployedDOM, MoniTotals> expMap = hardCounts.get(i);
-                for (DeployedDOM dk : expMap.keySet()) {
-                    String omID = String.format("(%d, %d)",
-                                                dk.getStringMajor(),
-                                                dk.getStringMinor());
-
-                    MoniTotals mt = expMap.get(dk);
-                    final double avg = computeAverage(mt.speScalar);
-
-                    assertTrue("Missing SPE value " + avg + " for " + omID,
-                               rateMap.containsKey(omID));
-                    assertEquals("Bad " + omID + " SPE value",
-                                 avg, rateMap.get(omID).doubleValue(), 0.001);
-
-                    final double stdDev = computeStdDev(mt.speScalar, avg);
-                    assertEquals("Bad " + omID + " SPE value",
-                                 stdDev, errMap.get(omID).doubleValue(),
-                                 0.001);
-                }
+                validateSPE(ad, expMap);
+            } else if (nm == MoniAnalysis.HV_MONI_NAME) {
+                validateHV(ad, expMap);
             } else {
-                // not validating anything except SPE and MPE
+                fail("Not validating binned " + nm);
             }
         }
     }
 
-    class RecordCount
+    private void validateDeadtime(AlertData ad,
+                                  Map<DeployedDOM, MoniTotals> expMap)
     {
-        int count;
-        void inc() { count++; }
-        public String toString() { return Integer.toString(count); }
+        Map<String, Double> valueMap =
+            ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
+        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            String omID = String.format("(%d, %d)",
+                                        e.getKey().getStringMajor(),
+                                        e.getKey().getStringMinor());
+
+            if (e.getValue().asciiCount == 0) {
+                assertFalse("Found unexpected Deadtime value for " + omID,
+                            valueMap.containsKey(omID));
+            } else {
+                final double val =
+                    MoniAnalysis.convertToDeadtime(e.getValue().deadtimeTotal,
+                                                   e.getValue().asciiCount);
+
+                assertTrue("Missing Deadtime value " + val + " for " + omID,
+                           valueMap.containsKey(omID));
+                assertEquals("Bad " + omID + " Deadtime value",
+                             val, valueMap.get(omID).doubleValue(), 0.001);
+            }
+        }
+    }
+
+    private void validateHV(AlertData ad, Map<DeployedDOM, MoniTotals> expMap)
+    {
+        Map<String, Double> valueMap =
+            ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
+
+        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            String omID = String.format("(%d, %d)",
+                                        e.getKey().getStringMajor(),
+                                        e.getKey().getStringMinor());
+
+            if (e.getValue().hardCount == 0) {
+                assertFalse("Found unexpected HV value for " + omID,
+                            valueMap.containsKey(omID));
+            } else {
+                assertTrue("Missing HV value for " + omID,
+                           valueMap.containsKey(omID));
+
+                final double val =
+                    MoniAnalysis.convertToVoltage(e.getValue().hvTotal,
+                                                  e.getValue().hardCount);
+                assertEquals("Bad " + omID + " HV voltage",
+                             val, valueMap.get(omID).doubleValue(), 0.001);
+            }
+        }
+    }
+
+    private void validateHVSet(AlertData ad,
+                               Map<DeployedDOM, MoniTotals> expMap)
+    {
+        Map<String, Double> valueMap =
+            ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
+        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            String omID = String.format("(%d, %d)",
+                                        e.getKey().getStringMajor(),
+                                        e.getKey().getStringMinor());
+
+            if (e.getValue().hardCount == 0) {
+                assertFalse("Found unexpected HVSet value for " + omID,
+                            valueMap.containsKey(omID));
+            } else {
+                final double val =
+                    MoniAnalysis.convertToVoltage(e.getValue().hvSet, 1);
+
+                assertTrue("Missing HVSet value " + val + " for " + omID,
+                           valueMap.containsKey(omID));
+                assertEquals("Bad " + omID + " HVSet value",
+                             val, valueMap.get(omID).doubleValue(), 0.001);
+            }
+        }
+    }
+
+    private void validateMPE(AlertData ad, Map<DeployedDOM, MoniTotals> expMap)
+    {
+        Map<String, Double> rateMap =
+            ad.getMap(MoniAnalysis.MONI_RATE_FIELD);
+        Map<String, Double> errMap =
+            ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
+
+        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            String omID = String.format("(%d, %d)",
+                                        e.getKey().getStringMajor(),
+                                        e.getKey().getStringMinor());
+
+            if (e.getValue().hardCount == 0 ||
+                e.getKey().getStringMinor() < 60)
+            {
+                assertFalse("Found unexpected MPE rate for " + omID,
+                            rateMap.containsKey(omID));
+                assertFalse("Found unexpected MPE error for " + omID,
+                            errMap.containsKey(omID));
+            } else {
+                assertTrue("Missing MPE rate for " + omID,
+                           rateMap.containsKey(omID));
+                assertTrue("Missing MPE error for " + omID,
+                           errMap.containsKey(omID));
+
+                final double avg = computeAverage(e.getValue().mpeScalar);
+                assertEquals("Bad " + omID + " MPE rate",
+                             avg, rateMap.get(omID).doubleValue(),
+                             0.001);
+
+                final double stdDev =
+                    computeStdDev(e.getValue().mpeScalar, avg);
+                assertEquals("Bad " + omID + " MPE error",
+                             stdDev, errMap.get(omID).doubleValue(),
+                             0.001);
+            }
+        }
+    }
+
+    private void validatePower(AlertData ad,
+                               Map<DeployedDOM, MoniTotals> expMap)
+    {
+        Map<String, Double> valueMap =
+            ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
+        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            String omID = String.format("(%d, %d)",
+                                        e.getKey().getStringMajor(),
+                                        e.getKey().getStringMinor());
+
+            if (e.getValue().hardCount == 0) {
+                assertFalse("Found unexpected Power value for " + omID,
+                            valueMap.containsKey(omID));
+            } else {
+                final double val =
+                    MoniAnalysis.convertToMBPower(e.getValue().power5VTotal,
+                                                  e.getValue().hardCount);
+
+                assertTrue("Missing Power value " + val + " for " + omID,
+                           valueMap.containsKey(omID));
+                assertEquals("Bad " + omID + " Power value",
+                             val, valueMap.get(omID).doubleValue(), 0.001);
+            }
+        }
+    }
+
+    private void validateSPE(AlertData ad, Map<DeployedDOM, MoniTotals> expMap)
+    {
+        Map<String, Double> rateMap =
+            ad.getMap(MoniAnalysis.MONI_RATE_FIELD);
+        Map<String, Double> errMap =
+            ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
+
+        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            String omID = String.format("(%d, %d)",
+                                        e.getKey().getStringMajor(),
+                                        e.getKey().getStringMinor());
+
+            if (e.getValue().hardCount == 0) {
+                assertFalse("Found unexpected SPE rate for " + omID,
+                            rateMap.containsKey(omID));
+                assertFalse("Found unexpected SPE error for " + omID,
+                            errMap.containsKey(omID));
+            } else {
+                assertTrue("Missing SPE rate for " + omID,
+                           rateMap.containsKey(omID));
+                assertTrue("Missing SPE error for " + omID,
+                           errMap.containsKey(omID));
+
+                final double avg = computeAverage(e.getValue().speScalar);
+                assertEquals("Bad " + omID + " SPE value",
+                             avg, rateMap.get(omID).doubleValue(), 0.001);
+
+                final double stdDev =
+                    computeStdDev(e.getValue().speScalar, avg);
+                assertEquals("Bad " + omID + " SPE value",
+                             stdDev, errMap.get(omID).doubleValue(), 0.001);
+            }
+        }
+    }
+
+    private void validateTotals(MockAlerter alerter, String nm)
+    {
+        final AlertData ad = alerter.get(nm, 0);
+
+        Map<DeployedDOM, MoniTotals> totalMap =
+            new HashMap<DeployedDOM, MoniTotals>();
+        for (int i = 0; i < allTotals.size(); i++) {
+            Map<DeployedDOM, MoniTotals> expMap = allTotals.get(i);
+            for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+                if (!totalMap.containsKey(e.getKey())) {
+                    totalMap.put(e.getKey(), new MoniTotals());
+                }
+                totalMap.get(e.getKey()).add(e.getValue());
+            }
+        }
+
+        if (nm == MoniAnalysis.DEADTIME_MONI_NAME) {
+            validateDeadtime(ad, totalMap);
+        } else if (nm == MoniAnalysis.POWER_MONI_NAME) {
+            validatePower(ad, totalMap);
+        } else if (nm == MoniAnalysis.HVSET_MONI_NAME) {
+            validateHVSet(ad, totalMap);
+        } else {
+            fail("Not validating totals for " + nm);
+        }
     }
 
     class MoniTotals
     {
+        long deadtimeTotal;
+        int asciiCount;
+
         ArrayList<Integer> speScalar = new ArrayList<Integer>();
         ArrayList<Integer> mpeScalar = new ArrayList<Integer>();
         int scalarCount;
+        int hvSet;
         long hvTotal;
         long power5VTotal;
-        int count;
+        int hardCount;
+
+        void add(ASCIIMonitor mon)
+        {
+            final String str = mon.getString();
+            if (!str.startsWith("F ")) {
+                throw new Error("Bad ASCII record \"" + str + "\"");
+            }
+
+            String[] flds = str.split("\\s+");
+            if (flds.length != 5) {
+                throw new Error("Bad ASCII record \"" + str + "\"");
+            }
+
+            long val;
+            try {
+                val = Integer.parseInt(flds[4]);
+            } catch (NumberFormatException nfe) {
+                throw new Error("Bad deadtime in \"" + str + "\"", nfe);
+            }
+
+            deadtimeTotal += val;
+            asciiCount++;
+        }
+
         void add(HardwareMonitor mon)
         {
-            count++;
             speScalar.add(mon.getSPEScalar());
             mpeScalar.add(mon.getMPEScalar());
+            if (hardCount == 0) {
+                hvSet = mon.getPMTBaseHVSetValue();
+            }
             hvTotal += mon.getPMTBaseHVMonitorValue();
             power5VTotal += mon.getADC5VPowerSupply();
+            hardCount++;
+        }
+
+        void add(MoniTotals mt)
+        {
+            deadtimeTotal += mt.deadtimeTotal;
+            asciiCount += mt.asciiCount;
+
+            // ignore binned MPE/SPE values
+            if (hardCount == 0) {
+                hvSet = mt.hvSet;
+            }
+            // ignore binned HV values
+            power5VTotal += mt.power5VTotal;
+            hardCount += mt.hardCount;
         }
 
         public String toString()
         {
             final double cvtVolt = ((2048.0 / 4095.0) * (5.2 / 2.0)) /
-                (double) count;
+                (double) hardCount;
 
-            double hvVolt = (double) hvTotal * cvtVolt;
-            double powerVolt = (double) power5VTotal *cvtVolt;
-            return String.format("spe %s mpe %s hv %f power %f", speScalar,
-                                 mpeScalar, hvVolt, powerVolt);
+            double powerVolt = (double) power5VTotal * cvtVolt;
+            return String.format("spe %s mpe %s hv %d power %f", speScalar,
+                                 mpeScalar, hvTotal, powerVolt);
         }
     }
 }
