@@ -122,8 +122,6 @@ public class MoniAnalysis
      */
     public static final double convertToVoltage(long total, int count)
     {
-        final double val5V = (2048.0 / 4095.0) * (5.2 / 2.0);
-
         return ((double) total / (double) count) / 2.0;
     }
 
