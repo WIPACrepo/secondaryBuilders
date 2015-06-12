@@ -10,6 +10,7 @@ import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
+import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Spliceable;
 import icecube.daq.splicer.SplicedAnalysis;
 import icecube.daq.splicer.Splicer;
@@ -30,13 +31,12 @@ import org.apache.commons.logging.LogFactory;
  * @author artur
  * @version $Id: SBSplicedAnalysis.java,v 1.0 2006/03/24 13:28:20 artur Exp $
  */
-public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
+public class SBSplicedAnalysis
+    implements SplicedAnalysis<Spliceable>, SplicerListener<Spliceable>
 {
 
     private Dispatcher dispatcher;
     private Splicer splicer;
-    private int start;
-    private int lastInputListSize;
     private int runNumber;
     private boolean reportedError;
     private String streamName = "noname";
@@ -60,25 +60,19 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      * List of Spliceable objects provided.
      *
      * @param splicedObjects a List of Spliceable objects.
-     * @param decrement the decrement of the indices in the List since the last
-     * invocation.
      */
-    public void execute(List splicedObjects, int decrement)
+    public void analyze(List<Spliceable> splicedObjects)
     {
         // Loop over the new objects in the splicer
         int numberOfObjectsInSplicer = splicedObjects.size();
-        lastInputListSize = numberOfObjectsInSplicer - (start - decrement);
 
-        if (log.isDebugEnabled()) {
-            log.debug("Splicer " + streamName + " contains: [" +
-                lastInputListSize + ":" + numberOfObjectsInSplicer + "]");
-        }
+        for (Spliceable spl : splicedObjects) {
+            if (spl == SpliceableFactory.LAST_POSSIBLE_SPLICEABLE) {
+                break;
+            }
 
-        for (int index = start - decrement; index < numberOfObjectsInSplicer;
-            index++)
-        {
             // get the next payload
-            IPayload payload = (IPayload) splicedObjects.get(index);
+            ILoadablePayload payload = (ILoadablePayload) spl;
 
             // gather data for monitoring messages
             try {
@@ -114,20 +108,8 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
                     reportedError = true;
                 }
             }
-        }
 
-        start = numberOfObjectsInSplicer;
-
-        // call truncate on splicer
-        if (splicedObjects.size() > 0) {
-            Spliceable update = (Spliceable) splicedObjects.get(start - 1);
-            if (null != update) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Truncating " + streamName + " splicer: " +
-                        update);
-                }
-                splicer.truncate(update);
-            }
+            payload.recycle();
         }
     }
 
@@ -238,7 +220,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      *
      * @param event the event encapsulating this state change.
      */
-    public void disposed(SplicerChangedEvent event)
+    public void disposed(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered DISPOSED state");
@@ -251,7 +233,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      *
      * @param event the event encapsulating this state change.
      */
-    public void failed(SplicerChangedEvent event)
+    public void failed(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered FAILED state");
@@ -274,7 +256,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      *
      * @param event the event encapsulating this state change.
      */
-    public void starting(SplicerChangedEvent event)
+    public void starting(SplicerChangedEvent<Spliceable> event)
     {
         try {
             // insert data boundary at begin of run
@@ -297,7 +279,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      *
      * @param event the event encapsulating this state change.
      */
-    public void started(SplicerChangedEvent event)
+    public void started(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered STARTED state");
@@ -310,7 +292,7 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      *
      * @param event the event encapsulating this state change.
      */
-    public void stopped(SplicerChangedEvent event)
+    public void stopped(SplicerChangedEvent<Spliceable> event)
     {
         try {
             dispatcher.dataBoundary(Dispatcher.STOP_PREFIX + runNumber);
@@ -326,10 +308,8 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
         }
         // tell manager that we have stopped
         if (log.isInfoEnabled()) {
-            log.info("entered stopped state. Splicer " + streamName +
-                " state is: " +
-                    splicer.getState() + ": " +
-                    splicer.getStateString());
+            log.info("entered stopped state. Splicer " + streamName + " is " +
+                     splicer.getState().name());
         }
     }
 
@@ -339,38 +319,10 @@ public class SBSplicedAnalysis implements SplicedAnalysis, SplicerListener
      *
      * @param event the event encapsulating this state change.
      */
-    public void stopping(SplicerChangedEvent event)
+    public void stopping(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered STOPPING state");
-        }
-    }
-
-    /**
-     * Called when the {@link icecube.daq.splicer.Splicer Splicer} has
-     * truncated its "rope". This
-     * method is called whenever the "rope" is cut, for example to make a clean
-     * start from the frayed beginning of a "rope", and not jsut the the {@link
-     * Splicer#truncate(Spliceable)} method is invoked. This enables the client
-     * to be notified as to which Spliceable are nover going to be accessed
-     * again by the Splicer.
-     *
-     * @param event the event encapsulating this truncation.
-     */
-    public void truncated(SplicerChangedEvent event)
-    {
-        if (log.isDebugEnabled()) {
-            log.debug("Splicer " + streamName + " truncated: " +
-                event.getSpliceable());
-        }
-        Iterator iter = event.getAllSpliceables().iterator();
-        while (iter.hasNext()) {
-            ILoadablePayload payload = (ILoadablePayload) iter.next();
-            if (log.isDebugEnabled()) {
-                log.debug("Recycle " + streamName + " payload " + payload);
-            }
-            // reduce memory commitment to splicer
-            payload.recycle();
         }
     }
 

@@ -21,8 +21,14 @@ import icecube.daq.payload.impl.PayloadFactory;
 import icecube.daq.payload.IByteBufferCache;
 import icecube.daq.payload.impl.VitreousBufferCache;
 import icecube.daq.splicer.HKN1Splicer;
+import icecube.daq.splicer.PrioritySplicer;
+import icecube.daq.splicer.Spliceable;
+import icecube.daq.splicer.SpliceableComparator;
 import icecube.daq.splicer.SpliceableFactory;
+import icecube.daq.splicer.SpliceableFactory;
+import icecube.daq.splicer.SplicedAnalysis;
 import icecube.daq.splicer.Splicer;
+import icecube.daq.splicer.SplicerException;
 import icecube.daq.util.DOMRegistry;
 import icecube.daq.util.IDOMRegistry;
 
@@ -50,7 +56,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15474 2015-03-16 16:22:39Z dglo $
+ * @version $Id: SBComponent.java 15570 2015-06-12 16:19:32Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -93,6 +99,15 @@ public class SBComponent extends DAQComponent
     private static final boolean disableIceTopFastMoni =
         !parseBoolean(System.getProperty("enableIceTopFastMoni", "true"));
 
+    private static final boolean USE_PRIO_SPLICER =
+        System.getProperty("usePrioritySplicer") != null;
+
+    private static final Spliceable LAST_SPLICEABLE =
+        SpliceableFactory.LAST_POSSIBLE_SPLICEABLE;
+
+    private final SpliceableComparator splicerCmp =
+        new SpliceableComparator(LAST_SPLICEABLE);
+
     private IByteBufferCache tcalBufferCache;
     private IByteBufferCache snBufferCache;
     private IByteBufferCache moniBufferCache;
@@ -101,9 +116,9 @@ public class SBComponent extends DAQComponent
     private SpliceableFactory snFactory;
     private SpliceableFactory moniFactory;
 
-    private Splicer tcalSplicer;
-    private Splicer snSplicer;
-    private Splicer moniSplicer;
+    private Splicer<Spliceable> tcalSplicer;
+    private Splicer<Spliceable> snSplicer;
+    private Splicer<Spliceable> moniSplicer;
 
     private TCalAnalysis tcalSplicedAnalysis;
     private SBSplicedAnalysis snSplicedAnalysis;
@@ -138,6 +153,7 @@ public class SBComponent extends DAQComponent
         new HashMap<Integer, SBRunData>();
 
     public SBComponent(SBCompConfig compConfig)
+        throws DAQCompException
     {
         super(COMP_NAME, COMP_ID);
 
@@ -157,7 +173,7 @@ public class SBComponent extends DAQComponent
             //addMBean("tcalCache", tcalBufferCache);
             tcalFactory = new PayloadFactory(tcalBufferCache);
             tcalSplicedAnalysis = new TCalAnalysis(tcalDispatcher);
-            tcalSplicer = new HKN1Splicer(tcalSplicedAnalysis);
+            tcalSplicer = createSplicer(tcalSplicedAnalysis);
             addSplicer(tcalSplicer);
 
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
@@ -192,7 +208,7 @@ public class SBComponent extends DAQComponent
             //addMBean("snCache", snBufferCache);
             snFactory = new PayloadFactory(snBufferCache);
             snSplicedAnalysis = new SBSplicedAnalysis(snDispatcher);
-            snSplicer = new HKN1Splicer(snSplicedAnalysis);
+            snSplicer = createSplicer(snSplicedAnalysis);
             addSplicer(snSplicer);
 
             snSplicedAnalysis.setSplicer(snSplicer);
@@ -225,7 +241,7 @@ public class SBComponent extends DAQComponent
             //addMBean("moniCache", moniBufferCache);
             moniFactory = new PayloadFactory(moniBufferCache);
             moniSplicedAnalysis = new MoniAnalysis(moniDispatcher);
-            moniSplicer = new HKN1Splicer(moniSplicedAnalysis);
+            moniSplicer = createSplicer(moniSplicedAnalysis);
             addSplicer(moniSplicer);
 
             if (disableIceTopFastMoni) {
@@ -253,6 +269,24 @@ public class SBComponent extends DAQComponent
 
         addMBean("jvm", new MemoryStatistics());
         addMBean("system", new SystemStatistics());
+    }
+
+    private Splicer<Spliceable> createSplicer(SplicedAnalysis<Spliceable> a)
+        throws DAQCompException
+    {
+        if (!USE_PRIO_SPLICER) {
+            return new HKN1Splicer<Spliceable>(a, splicerCmp, LAST_SPLICEABLE);
+        }
+
+        final int totChannels = DAQCmdInterface.DAQ_MAX_NUM_STRINGS +
+            DAQCmdInterface.DAQ_MAX_NUM_IDH;
+        try {
+            return new PrioritySplicer<Spliceable>("SBSorter", a, splicerCmp,
+                                                   LAST_SPLICEABLE,
+                                                   totChannels);
+        } catch (SplicerException se) {
+            throw new DAQCompException("Cannot create splicer", se);
+        }
     }
 
     /**
@@ -472,7 +506,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15474 2015-03-16 16:22:39Z dglo $";
+        return "$Id: SBComponent.java 15570 2015-06-12 16:19:32Z dglo $";
     }
 
     /**

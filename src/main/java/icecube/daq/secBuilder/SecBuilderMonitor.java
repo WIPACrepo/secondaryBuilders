@@ -68,7 +68,7 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
      */
     public String getSplicerState()
     {
-        return splicer.getStateString();
+        return splicer.getState().name();
     }
 
     /**
