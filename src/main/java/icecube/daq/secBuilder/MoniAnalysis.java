@@ -69,6 +69,7 @@ public class MoniAnalysis
     private static IDOMRegistry domRegistry;
 
     private AlertQueue alertQueue;
+    private boolean warnedQueueStopped;
 
     private long binStartTime = NO_UTCTIME;
     private long binEndTime = NO_UTCTIME;
@@ -212,6 +213,11 @@ public class MoniAnalysis
         } else if (alertQueue == null) {
             throw new MoniException("AlertQueue has not been set");
         } else if (alertQueue.isStopped()) {
+            if (warnedQueueStopped) {
+                return;
+            }
+
+            warnedQueueStopped = true;
             throw new MoniException("AlertQueue " + alertQueue +
                                     " is stopped");
         }

@@ -44,6 +44,7 @@ public class TCalAnalysis
     private static IDOMRegistry domRegistry;
 
     private AlertQueue alertQueue;
+    private boolean warnedQueueStopped;
 
     private HashMap<Long, DOMStats> domStats = new HashMap<Long, DOMStats>();
 
@@ -101,6 +102,11 @@ public class TCalAnalysis
         } else if (alertQueue == null) {
             throw new MoniException("AlertQueue has not been set");
         } else if (alertQueue.isStopped()) {
+            if (warnedQueueStopped) {
+                return;
+            }
+
+            warnedQueueStopped = true;
             throw new MoniException("AlertQueue " + alertQueue +
                                     " is stopped");
         }
