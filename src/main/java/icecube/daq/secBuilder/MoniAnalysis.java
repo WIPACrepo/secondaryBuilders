@@ -167,20 +167,19 @@ public class MoniAnalysis
      */
     public void finishMonitoring()
     {
-        if (binStartTime == NO_UTCTIME) {
-            throw new Error("Monitoring start time has not been set!");
-        } else if (binEndTime == NO_UTCTIME) {
-            throw new Error("Monitoring end time has not been set!");
-        }
-
-        final String startTime = UTCTime.toDateString(binStartTime);
-        final String endTime = UTCTime.toDateString(binEndTime);
-
-        if (binEndTime < binStartTime) {
-            LOG.error("Final bin end time " + endTime +
-                      " is earlier than start time " + startTime);
+        if (binStartTime == NO_UTCTIME || binEndTime == NO_UTCTIME) {
+            LOG.error("Monitoring start/end time has not been set, not" +
+                      " sending binned monitoring values");
         } else {
-            sendBinnedMonitorValues(startTime, endTime);
+            final String startTime = UTCTime.toDateString(binStartTime);
+            final String endTime = UTCTime.toDateString(binEndTime);
+
+            if (binEndTime < binStartTime) {
+                LOG.error("Final bin end time " + endTime +
+                          " is earlier than start time " + startTime);
+            } else {
+                sendBinnedMonitorValues(startTime, endTime);
+            }
         }
 
         sendSummaryMonitorValues();
