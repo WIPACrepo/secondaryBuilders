@@ -31,10 +31,8 @@ public class MoniAnalysis
     /** Deadtime message version number */
     public static final int DEADTIME_MONI_VERSION = 0;
 
-    /** 5v message variable name */
-    public static final String HV_MONI_NAME = "dom_pmt_hv";
-    /** 5v setting message variable name */
-    public static final String HVSET_MONI_NAME = "dom_pmt_hv_set";
+    /** 5v difference message variable name */
+    public static final String HVDIFF_MONI_NAME = "dom_pmt_hv_diff";
     /** 5v message version number */
     public static final int HV_MONI_VERSION = 0;
 
@@ -269,10 +267,21 @@ public class MoniAnalysis
                     dval.addSPEScalar(mon.getSPEScalar());
                     dval.addMPEScalar(mon.getMPEScalar());
 
-                    if (dval.hvCount == 0) {
-                        // only grab 'set' value once
-                        dval.hvSet = mon.getPMTBaseHVSetValue();
+                    final short hvSet = mon.getPMTBaseHVSetValue();
+                    if (!dval.baseSet) {
+                        // save base voltage
+                        dval.baseValue = hvSet;
+                        dval.baseVoltage = convertToVoltage(hvSet, 1);
+                        dval.baseSet = true;
+                    } else if (dval.baseValue != hvSet) {
+                        final String msg =
+                            String.format("DOM %012x previous setHV %d does" +
+                                          " not match current %d",
+                                          dval.dom.getDomId(), dval.baseValue,
+                                          hvSet);
+                        LOG.error(msg);
                     }
+
                     dval.hvTotal += mon.getPMTBaseHVMonitorValue();
                     dval.hvCount++;
 
@@ -439,20 +448,12 @@ public class MoniAnalysis
      */
     private void sendHV(String startTime, String endTime)
     {
-        HashMap<String, Double> hvMap = new HashMap<String, Double>();
-
-        // settings are only sent once
-        HashMap<String, Double> setMap;
-        if (!sentHVSet) {
-            setMap = new HashMap<String, Double>();
-        } else {
-            setMap = null;
-        }
+        HashMap<String, Double> diffMap = new HashMap<String, Double>();
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
-            double voltage;
+            double voltage, expected;
             synchronized (dv) {
                 if (dv.hvCount == 0) {
                     if (dv.hvTotal > 0) {
@@ -465,39 +466,25 @@ public class MoniAnalysis
                     continue;
                 }
 
+                expected = dv.baseVoltage;
+
                 voltage = convertToVoltage(dv.hvTotal, dv.hvCount);
                 dv.hvTotal = 0;
                 dv.hvCount = 0;
+
             }
 
-            hvMap.put(dv.getOmID(), voltage);
-            if (setMap != null) {
-                double setV = convertToVoltage(dv.hvSet, 1);
-                setMap.put(dv.getOmID(), setV);
-            }
+            diffMap.put(dv.getOmID(), voltage - expected);
         }
 
-        if (setMap != null && setMap.size() > 0) {
-            HashMap setMsg = new HashMap();
-            setMsg.put("recordingStartTime", startTime);
-            setMsg.put("recordingStopTime", endTime);
-            setMsg.put("version", HV_MONI_VERSION);
-            setMsg.put("runNumber", getRunNumber());
-            setMsg.put(MONI_VALUE_FIELD, setMap);
-            sendMessage(HVSET_MONI_NAME, setMsg);
-
-            // remember that we sent the HV settings
-            sentHVSet = true;
-        }
-
-        if (hvMap.size() > 0) {
+        if (diffMap.size() > 0) {
             HashMap hvMsg = new HashMap();
             hvMsg.put("recordingStartTime", startTime);
             hvMsg.put("recordingStopTime", endTime);
             hvMsg.put("version", HV_MONI_VERSION);
             hvMsg.put("runNumber", getRunNumber());
-            hvMsg.put(MONI_VALUE_FIELD, hvMap);
-            sendMessage(HV_MONI_NAME, hvMsg);
+            hvMsg.put(MONI_VALUE_FIELD, diffMap);
+            sendMessage(HVDIFF_MONI_NAME, hvMsg);
         }
     }
 
@@ -771,7 +758,9 @@ public class MoniAnalysis
         ScalarValues speScalar = new ScalarValues();
         ScalarValues mpeScalar = new ScalarValues();
 
-        int hvSet;
+        boolean baseSet;
+        short baseValue;
+        double baseVoltage;
 
         long hvTotal;
         int hvCount;
@@ -911,9 +900,10 @@ public class MoniAnalysis
 
         public String toString()
         {
-            return String.format("%s: spe %s mpe %s hv %d hvTot %d hvCnt %d" +
-                                 " 5VTot %d 5VCnt %d deadTot %d deadCnt %d",
-                                 getOmID(), speScalar, mpeScalar, hvSet,
+            return String.format("%s: spe %s mpe %s baseVoltage %d hvTot %d" +
+                                 " hvCnt %d 5VTot %d 5VCnt %d deadTot %d" +
+                                 " deadCnt %d",
+                                 getOmID(), speScalar, mpeScalar, baseVoltage,
                                  hvTotal, hvCount, power5VTotal, power5VCount,
                                  deadtimeTotal, deadtimeCount);
         }

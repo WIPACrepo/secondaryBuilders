@@ -212,6 +212,100 @@ public class MoniAnalysisTest
         }
     }
 
+    private void runInOneRealm(boolean fakeIceTop)
+        throws MoniException, PayloadException
+    {
+        MockDispatcher disp = new MockDispatcher();
+        disp.setDispatchDestStorage(tempDir);
+
+        MockDOMRegistry reg = buildDOMRegistry(fakeIceTop);
+
+        AlertQueue aq = new AlertQueue(alerter);
+
+        MoniAnalysis ma = new MoniAnalysis(disp);
+        ma.setDOMRegistry(reg);
+        ma.setAlertQueue(aq);
+
+        MoniValidator validator = new MoniValidator(reg);
+
+        short[] data = new short[HardwareMonitor.NUM_DATA_ENTRIES];
+
+        HashMap<Long, Short> setVals = new HashMap<Long, Short>();
+
+        long baseDOM = 7;
+        long baseTime = 1234567890;
+        int nextTime = 11;
+        for (int i = 0; i < 1200; i += nextTime, nextTime++) {
+            validator.setTime(i);
+
+            long domId = (baseDOM + i) & 0xf;
+            long time = baseTime + ((long) i * 10000000000L);
+
+            Monitor mon;
+            if ((i & 1) == 0) {
+                String msg = String.format("F %d %d %d %d", i + 10, i + 11,
+                                           i + 15, i + 21);
+                ASCIIMonitor tmp = createASCIIRecord(domId, time, msg);
+                validator.add(tmp);
+                mon = tmp;
+            } else {
+                final int hvSetIndex = 24;
+
+                for (int di = 0; di < data.length; di++) {
+                    short val = (short) (i + di);
+                    if (di == hvSetIndex) {
+                        if (!setVals.containsKey(domId)) {
+                            setVals.put(domId, val);
+                        }
+                        val = setVals.get(domId);
+                    }
+                    data[di] = val;
+                }
+
+                HardwareMonitor tmp = createHardwareRecord(domId, time, data,
+                                                           nextTime,
+                                                           nextTime & 0xcaca);
+                validator.add(tmp);
+                mon = tmp;
+            }
+
+            ma.gatherMonitoring(mon);
+        }
+        ma.finishMonitoring();
+
+        aq.stopAndWait();
+
+        // save last sets of counts
+        validator.endBin();
+
+        String[] twice = new String[] {
+            MoniAnalysis.SPE_MONI_NAME,
+            MoniAnalysis.MPE_MONI_NAME,
+            MoniAnalysis.HVDIFF_MONI_NAME,
+        };
+
+        HashMap<String, Integer> counts = new HashMap<String, Integer>();
+        counts.put(MoniAnalysis.SPE_MONI_NAME, 2);
+        if (fakeIceTop) {
+            counts.put(MoniAnalysis.MPE_MONI_NAME, 2);
+        } else {
+            counts.put(MoniAnalysis.MPE_MONI_NAME, 0);
+        }
+        counts.put(MoniAnalysis.HVDIFF_MONI_NAME, 2);
+        counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
+        counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
+
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            assertEquals("Unexpected alert count for " + e.getKey(),
+                         e.getValue().intValue(),
+                         alerter.countAlerts(e.getKey()));
+
+            validator.validate(alerter, e.getKey());
+
+            alerter.clear(e.getKey());
+        }
+    }
+
     private void sendFile(MoniAnalysis ma, File path)
         throws IOException
     {
@@ -339,16 +433,15 @@ public class MoniAnalysisTest
         String[] twice = new String[] {
             MoniAnalysis.SPE_MONI_NAME,
             MoniAnalysis.MPE_MONI_NAME,
-            MoniAnalysis.HV_MONI_NAME,
+            MoniAnalysis.HVDIFF_MONI_NAME,
         };
 
         HashMap<String, Integer> counts = new HashMap<String, Integer>();
         counts.put(MoniAnalysis.SPE_MONI_NAME, 0);
         counts.put(MoniAnalysis.MPE_MONI_NAME, 0);
-        counts.put(MoniAnalysis.HV_MONI_NAME, 0);
+        counts.put(MoniAnalysis.HVDIFF_MONI_NAME, 0);
         counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 0);
         counts.put(MoniAnalysis.POWER_MONI_NAME, 0);
-        counts.put(MoniAnalysis.HVSET_MONI_NAME, 0);
 
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
             assertEquals("Unexpected alert count for " + e.getKey(),
@@ -365,159 +458,14 @@ public class MoniAnalysisTest
     public void testInIce()
         throws MoniException, PayloadException
     {
-        MockDOMRegistry reg = buildDOMRegistry(false);
-
-        AlertQueue aq = new AlertQueue(alerter);
-
-        MoniAnalysis ma = new MoniAnalysis(new MockDispatcher());
-        ma.setDOMRegistry(reg);
-        ma.setAlertQueue(aq);
-
-        MoniValidator validator = new MoniValidator(reg);
-
-        short[] data = new short[HardwareMonitor.NUM_DATA_ENTRIES];
-
-        long baseDOM = 7;
-        long baseTime = 1234567890;
-        int nextTime = 11;
-        for (int i = 0; i < 1200; i += nextTime, nextTime++) {
-            validator.setTime(i);
-
-            long domId = (baseDOM + i) & 0xf;
-            long time = baseTime + ((long) i * 10000000000L);
-
-            Monitor mon;
-            if ((i & 1) == 0) {
-                String msg = String.format("F %d %d %d %d", i + 10, i + 11,
-                                           i + 15, i + 21);
-                ASCIIMonitor tmp = createASCIIRecord(domId, time, msg);
-                validator.add(tmp);
-                mon = tmp;
-            } else {
-                for (int di = 0; di < data.length; di++) {
-                    data[di] = (short) (i + di);
-                }
-
-                HardwareMonitor tmp = createHardwareRecord(domId, time, data,
-                                                           nextTime,
-                                                           nextTime & 0xcaca);
-                validator.add(tmp);
-                mon = tmp;
-            }
-
-            ma.gatherMonitoring(mon);
-        }
-        ma.finishMonitoring();
-
-        aq.stopAndWait();
-
-        // save last sets of counts
-        validator.endBin();
-
-        String[] twice = new String[] {
-            MoniAnalysis.SPE_MONI_NAME,
-            MoniAnalysis.MPE_MONI_NAME,
-            MoniAnalysis.HV_MONI_NAME,
-        };
-
-        HashMap<String, Integer> counts = new HashMap<String, Integer>();
-        counts.put(MoniAnalysis.SPE_MONI_NAME, 2);
-        counts.put(MoniAnalysis.MPE_MONI_NAME, 0);
-        counts.put(MoniAnalysis.HV_MONI_NAME, 2);
-        counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
-        counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
-        counts.put(MoniAnalysis.HVSET_MONI_NAME, 1);
-
-        for (Map.Entry<String, Integer> e : counts.entrySet()) {
-            assertEquals("Unexpected alert count for " + e.getKey(),
-                         e.getValue().intValue(),
-                         alerter.countAlerts(e.getKey()));
-
-            validator.validate(alerter, e.getKey());
-
-            alerter.clear(e.getKey());
-        }
+        runInOneRealm(false);
     }
 
     @Test
     public void testIceTop()
         throws MoniException, PayloadException
     {
-        MockDispatcher disp = new MockDispatcher();
-        disp.setDispatchDestStorage(tempDir);
-
-        MockDOMRegistry reg = buildDOMRegistry(true);
-
-        AlertQueue aq = new AlertQueue(alerter);
-
-        MoniAnalysis ma = new MoniAnalysis(disp);
-        ma.setDOMRegistry(reg);
-        ma.setAlertQueue(aq);
-
-        MoniValidator validator = new MoniValidator(reg);
-
-        short[] data = new short[HardwareMonitor.NUM_DATA_ENTRIES];
-
-        long baseDOM = 3;
-        long baseTime = 1234567890;
-        int nextTime = 11;
-        for (int i = 0; i < 1200; i += nextTime, nextTime++) {
-            validator.setTime(i);
-
-            long domId = (baseDOM + i) & 0xf;
-            long time = baseTime + ((long) i * 10000000000L);
-
-            Monitor mon;
-            if ((i & 1) == 0) {
-                String msg = String.format("F %d %d %d %d", i + 10, i + 11,
-                                           i + 15, i + 21);
-                ASCIIMonitor tmp = createASCIIRecord(domId, time, msg);
-                validator.add(tmp);
-                mon = tmp;
-            } else {
-                for (int di = 0; di < data.length; di++) {
-                    data[di] = (short) (i + di);
-                }
-
-                HardwareMonitor tmp = createHardwareRecord(domId, time, data,
-                                                           nextTime,
-                                                           nextTime & 0xcaca);
-                validator.add(tmp);
-                mon = tmp;
-            }
-
-            ma.gatherMonitoring(mon);
-        }
-        ma.finishMonitoring();
-
-        aq.stopAndWait();
-
-        // save last sets of counts
-        validator.endBin();
-
-        String[] twice = new String[] {
-            MoniAnalysis.SPE_MONI_NAME,
-            MoniAnalysis.MPE_MONI_NAME,
-            MoniAnalysis.HV_MONI_NAME,
-        };
-
-        HashMap<String, Integer> counts = new HashMap<String, Integer>();
-        counts.put(MoniAnalysis.SPE_MONI_NAME, 2);
-        counts.put(MoniAnalysis.MPE_MONI_NAME, 2);
-        counts.put(MoniAnalysis.HV_MONI_NAME, 2);
-        counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
-        counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
-        counts.put(MoniAnalysis.HVSET_MONI_NAME, 1);
-
-        for (Map.Entry<String, Integer> e : counts.entrySet()) {
-            assertEquals("Unexpected alert count for " + e.getKey(),
-                         e.getValue().intValue(),
-                         alerter.countAlerts(e.getKey()));
-
-            validator.validate(alerter, e.getKey());
-
-            alerter.clear(e.getKey());
-        }
+        runInOneRealm(true);
     }
 
     @Test
@@ -787,7 +735,7 @@ class MoniValidator
                 validateMPE(ad, expMap);
             } else if (nm == MoniAnalysis.SPE_MONI_NAME) {
                 validateSPE(ad, expMap);
-            } else if (nm == MoniAnalysis.HV_MONI_NAME) {
+            } else if (nm == MoniAnalysis.HVDIFF_MONI_NAME) {
                 validateHV(ad, expMap);
             } else {
                 fail("Not validating binned " + nm);
@@ -841,33 +789,9 @@ class MoniValidator
                 final double val =
                     MoniAnalysis.convertToVoltage(e.getValue().hvTotal,
                                                   e.getValue().hardCount);
+                final double diff = val - e.getValue().baseVoltage;
                 assertEquals("Bad " + omID + " HV voltage",
-                             val, valueMap.get(omID).doubleValue(), 0.001);
-            }
-        }
-    }
-
-    private void validateHVSet(AlertData ad,
-                               Map<DeployedDOM, MoniTotals> expMap)
-    {
-        Map<String, Double> valueMap =
-            ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
-        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
-            String omID = String.format("(%d, %d)",
-                                        e.getKey().getStringMajor(),
-                                        e.getKey().getStringMinor());
-
-            if (e.getValue().hardCount == 0) {
-                assertFalse("Found unexpected HVSet value for " + omID,
-                            valueMap.containsKey(omID));
-            } else {
-                final double val =
-                    MoniAnalysis.convertToVoltage(e.getValue().hvSet, 1);
-
-                assertTrue("Missing HVSet value " + val + " for " + omID,
-                           valueMap.containsKey(omID));
-                assertEquals("Bad " + omID + " HVSet value",
-                             val, valueMap.get(omID).doubleValue(), 0.001);
+                             diff, valueMap.get(omID).doubleValue(), 0.001);
             }
         }
     }
@@ -992,8 +916,6 @@ class MoniValidator
             validateDeadtime(ad, totalMap);
         } else if (nm == MoniAnalysis.POWER_MONI_NAME) {
             validatePower(ad, totalMap);
-        } else if (nm == MoniAnalysis.HVSET_MONI_NAME) {
-            validateHVSet(ad, totalMap);
         } else {
             fail("Not validating totals for " + nm);
         }
@@ -1007,7 +929,8 @@ class MoniValidator
         ArrayList<Integer> speScalar = new ArrayList<Integer>();
         ArrayList<Integer> mpeScalar = new ArrayList<Integer>();
         int scalarCount;
-        int hvSet;
+        double baseVoltage;
+        boolean baseSet;
         long hvTotal;
         long power5VTotal;
         int hardCount;
@@ -1039,8 +962,10 @@ class MoniValidator
         {
             speScalar.add(mon.getSPEScalar());
             mpeScalar.add(mon.getMPEScalar());
-            if (hardCount == 0) {
-                hvSet = mon.getPMTBaseHVSetValue();
+            if (!baseSet) {
+                final int hvSet = mon.getPMTBaseHVSetValue();
+                baseVoltage = MoniAnalysis.convertToVoltage(hvSet, 1);
+                baseSet = true;
             }
             hvTotal += mon.getPMTBaseHVMonitorValue();
             power5VTotal += mon.getADC5VPowerSupply();
@@ -1053,9 +978,11 @@ class MoniValidator
             asciiCount += mt.asciiCount;
 
             // ignore binned MPE/SPE values
-            if (hardCount == 0) {
-                hvSet = mt.hvSet;
+            if (!baseSet) {
+                baseVoltage = mt.baseVoltage;
+                baseSet = mt.baseSet;
             }
+
             // ignore binned HV values
             power5VTotal += mt.power5VTotal;
             hardCount += mt.hardCount;
