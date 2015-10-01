@@ -686,8 +686,10 @@ class MoniValidator
 
     private static final double computeStdDev(List<Integer> list, double mean)
     {
-        if (list.size() < 2) {
+        if (list.size() == 0) {
             return 0.0;
+        } else if (list.size() == 1) {
+            return Math.sqrt(list.get(0).doubleValue());
         }
 
         double total = 0.0;

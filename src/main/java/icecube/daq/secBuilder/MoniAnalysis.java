@@ -734,8 +734,10 @@ public class MoniAnalysis
          */
         double standardDeviation(double mean)
         {
-            if (data.size() < 2) {
+            if (data.size() == 0) {
                 return 0.0;
+            } else if (data.size() == 1) {
+                return Math.sqrt(data.get(0).doubleValue());
             }
 
             double sum = 0.0;
