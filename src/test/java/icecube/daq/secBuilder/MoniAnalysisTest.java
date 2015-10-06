@@ -807,9 +807,7 @@ class MoniValidator
                                         e.getKey().getStringMajor(),
                                         e.getKey().getStringMinor());
 
-            if (e.getValue().hardCount == 0 ||
-                e.getKey().getStringMinor() < 60)
-            {
+            if (e.getKey().getStringMinor() < 60) {
                 assertFalse("Found unexpected MPE rate for " + omID,
                             rateMap.containsKey(omID));
                 assertFalse("Found unexpected MPE error for " + omID,
@@ -872,26 +870,19 @@ class MoniValidator
                                         e.getKey().getStringMajor(),
                                         e.getKey().getStringMinor());
 
-            if (e.getValue().hardCount == 0) {
-                assertFalse("Found unexpected SPE rate for " + omID,
-                            rateMap.containsKey(omID));
-                assertFalse("Found unexpected SPE error for " + omID,
-                            errMap.containsKey(omID));
-            } else {
-                assertTrue("Missing SPE rate for " + omID,
-                           rateMap.containsKey(omID));
-                assertTrue("Missing SPE error for " + omID,
-                           errMap.containsKey(omID));
+            assertTrue("Missing SPE rate for " + omID,
+                       rateMap.containsKey(omID));
+            assertTrue("Missing SPE error for " + omID,
+                       errMap.containsKey(omID));
 
-                final double avg = computeAverage(e.getValue().speScalar);
-                assertEquals("Bad " + omID + " SPE rate",
-                             avg, rateMap.get(omID).doubleValue(), 0.001);
+            final double avg = computeAverage(e.getValue().speScalar);
+            assertEquals("Bad " + omID + " SPE rate",
+                         avg, rateMap.get(omID).doubleValue(), 0.001);
 
-                final double rms =
-                    computeRMS(e.getValue().speScalar);
-                assertEquals("Bad " + omID + " SPE error",
-                             rms, errMap.get(omID).doubleValue(), 0.001);
-            }
+            final double rms =
+                computeRMS(e.getValue().speScalar);
+            assertEquals("Bad " + omID + " SPE error",
+                         rms, errMap.get(omID).doubleValue(), 0.001);
         }
     }
 
