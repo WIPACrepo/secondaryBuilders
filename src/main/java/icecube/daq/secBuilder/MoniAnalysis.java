@@ -544,20 +544,10 @@ public class MoniAnalysis
             DOMValues dv = domValues.get(mbKey);
 
             synchronized (dv) {
-                if (dv.hasSPE()) {
-                    double mean = dv.getSPEMean();
+                dv.putRateAndError(true, speRate, speRateError);
 
-                    speRate.put(dv.getOmID(), mean);
-                    speRateError.put(dv.getOmID(), dv.getSPEStdDev(mean));
-                    dv.resetSPE();
-                }
-
-                if (dv.dom.isIceTop() && dv.hasMPE()) {
-                    double mean = dv.getMPEMean();
-
-                    mpeRate.put(dv.getOmID(), mean);
-                    mpeRateError.put(dv.getOmID(), dv.getMPEStdDev(mean));
-                    dv.resetMPE();
+                if (dv.dom.isIceTop()) {
+                    dv.putRateAndError(false, mpeRate, mpeRateError);
                 }
             }
         }
@@ -672,93 +662,14 @@ public class MoniAnalysis
     }
 
     /**
-     * MPE/SPE scalar values
-     */
-    class ScalarValues
-    {
-        private ArrayList<Integer> data = new ArrayList<Integer>();
-
-        /**
-         * Add a scalar value
-         *
-         * @param val value to add
-         */
-        void add(int val)
-        {
-            data.add(val);
-        }
-
-        /**
-         * Does the list contain one or more values?
-         *
-         * @return <tt>true</tt> if there is data
-         */
-        boolean isEmpty()
-        {
-            return data.isEmpty();
-        }
-
-        /**
-         * Calculate the mean value
-         *
-         * @return mean value
-         */
-        double mean()
-        {
-            if (data.isEmpty()) {
-                return 0.0;
-            }
-
-            long sum = 0;
-            for (Integer v : data) {
-                sum += v;
-            }
-
-            return (double) sum / (double) data.size();
-        }
-
-        /**
-         * Clear the list of values
-         */
-        void reset()
-        {
-            data.clear();
-        }
-
-        /**
-         * Calculate the standard deviation
-         *
-         * @return mean previoously calculated mean value
-         *
-         * @return standard deviation
-         */
-        double standardDeviation(double mean)
-        {
-            if (data.size() == 0) {
-                return 0.0;
-            } else if (data.size() == 1) {
-                return Math.sqrt(data.get(0).doubleValue());
-            }
-
-            double sum = 0.0;
-            for (Integer v : data) {
-                final double tmp = v.doubleValue() - mean;
-                sum += tmp * tmp;
-            }
-
-            return Math.sqrt(sum / (data.size() - 1));
-        }
-    }
-
-    /**
      * Per-DOM monitoring data
      */
     class DOMValues
     {
         DeployedDOM dom;
 
-        ScalarValues speScalar = new ScalarValues();
-        ScalarValues mpeScalar = new ScalarValues();
+        ArrayList<Integer> speScalar = new ArrayList<Integer>();
+        ArrayList<Integer> mpeScalar = new ArrayList<Integer>();
 
         boolean baseSet;
         short baseValue;
@@ -802,57 +713,13 @@ public class MoniAnalysis
         }
 
         /**
-         * Get the mean value for the current list of MPE values
-         *
-         * @return mean value
-         */
-        public double getMPEMean()
-        {
-            return mpeScalar.mean();
-        }
-
-        /**
-         * Get the standard deviation for the current list of MPE values
-         *
-         * @param mean mean value of current list of values
-         *
-         * @return standard deviation
-         */
-        public double getMPEStdDev(double mean)
-        {
-            return mpeScalar.standardDeviation(mean);
-        }
-
-        /**
-         * Get the mean value for the current list of SPE values
-         *
-         * @return mean value
-         */
-        public double getSPEMean()
-        {
-            return speScalar.mean();
-        }
-
-        /**
-         * Get the standard deviation for the current list of SPE values
-         *
-         * @param mean mean value of current list of values
-         *
-         * @return standard deviation
-         */
-        public double getSPEStdDev(double mean)
-        {
-            return speScalar.standardDeviation(mean);
-        }
-
-        /**
          * Has DOM sent one or more MPE values?
          *
          * @return <tt>true</tt> if there is MPE data
          */
         public boolean hasMPE()
         {
-            return mpeScalar != null && !mpeScalar.isEmpty();
+            return !mpeScalar.isEmpty();
         }
 
         /**
@@ -862,27 +729,7 @@ public class MoniAnalysis
          */
         public boolean hasSPE()
         {
-            return speScalar != null && !speScalar.isEmpty();
-        }
-
-        /**
-         * Clear the list of MPE values
-         */
-        public void resetMPE()
-        {
-            if (mpeScalar != null) {
-                mpeScalar.reset();
-            }
-        }
-
-        /**
-         * Clear the list of MPE values
-         */
-        public void resetSPE()
-        {
-            if (speScalar != null) {
-                speScalar.reset();
-            }
+            return !speScalar.isEmpty();
         }
 
         /**
@@ -898,6 +745,35 @@ public class MoniAnalysis
             }
 
             return omId;
+        }
+
+        void putRateAndError(boolean useSPE, HashMap<String, Double> rate,
+                             HashMap<String, Double> rateError)
+        {
+            ArrayList<Integer> sv;
+            if (useSPE) {
+                sv = speScalar;
+            } else {
+                sv = mpeScalar;
+            }
+
+            if (sv.isEmpty()) {
+                rate.put(getOmID(), 0.0);
+                rateError.put(getOmID(), 0.0);
+            } else {
+                long lsum = 0;
+                for (Integer val : sv) {
+                    lsum += val;
+                }
+
+                final double sum = (double) lsum;
+                final double len = (double) sv.size();
+
+                rate.put(getOmID(), sum / len);
+                rateError.put(getOmID(), Math.sqrt(sum) / len);
+
+                sv.clear();
+            }
         }
 
         public String toString()
