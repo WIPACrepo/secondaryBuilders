@@ -273,13 +273,16 @@ public class MoniAnalysis
                         dval.baseValue = hvSet;
                         dval.baseVoltage = convertToVoltage(hvSet, 1);
                         dval.baseSet = true;
-                    } else if (dval.baseValue != hvSet) {
+                        dval.baseWarned = false;
+                    } else if (dval.baseValue != hvSet && !dval.baseWarned) {
                         final String msg =
-                            String.format("DOM %012x previous setHV %d does" +
-                                          " not match current %d",
-                                          dval.dom.getDomId(), dval.baseValue,
-                                          hvSet);
+                            String.format("DOM %s: previous setHV %d does" +
+                                          " not match current %d; reset to" +
+                                          " current value", dval.getOmID(),
+                                          dval.baseValue, hvSet);
                         LOG.error(msg);
+                        dval.baseValue = hvSet;
+                        dval.baseWarned = true;
                     }
 
                     dval.hvTotal += mon.getPMTBaseHVMonitorValue();
@@ -664,7 +667,7 @@ public class MoniAnalysis
     /**
      * Per-DOM monitoring data
      */
-    class DOMValues
+    private static class DOMValues
     {
         DeployedDOM dom;
 
@@ -674,6 +677,7 @@ public class MoniAnalysis
         boolean baseSet;
         short baseValue;
         double baseVoltage;
+        boolean baseWarned;
 
         long hvTotal;
         int hvCount;
@@ -778,9 +782,9 @@ public class MoniAnalysis
 
         public String toString()
         {
-            return String.format("%s: spe %s mpe %s baseVoltage %d hvTot %d" +
-                                 " hvCnt %d 5VTot %d 5VCnt %d deadTot %d" +
-                                 " deadCnt %d",
+            return String.format("%s: spe %s mpe %s baseVoltage %.2f" +
+                                 " hvTot %d hvCnt %d 5VTot %d 5VCnt %d" +
+                                 " deadTot %d deadCnt %d",
                                  getOmID(), speScalar, mpeScalar, baseVoltage,
                                  hvTotal, hvCount, power5VTotal, power5VCount,
                                  deadtimeTotal, deadtimeCount);
