@@ -56,7 +56,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15570 2015-06-12 16:19:32Z dglo $
+ * @version $Id: SBComponent.java 15938 2015-12-23 16:54:47Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -170,7 +170,7 @@ public class SBComponent extends DAQComponent
             tcalBufferCache = new VitreousBufferCache("SBTCal", 350000000);
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
-            //addMBean("tcalCache", tcalBufferCache);
+            addMBean("tcalCache", tcalBufferCache);
             tcalFactory = new PayloadFactory(tcalBufferCache);
             tcalSplicedAnalysis = new TCalAnalysis(tcalDispatcher);
             tcalSplicer = createSplicer(tcalSplicedAnalysis);
@@ -202,10 +202,10 @@ public class SBComponent extends DAQComponent
             if (LOG.isInfoEnabled()) {
                 LOG.info("Constructing SNBuilder");
             }
-            snBufferCache = new VitreousBufferCache("SBSN", 250000000);
+            snBufferCache = new VitreousBufferCache("SBSN", 500000000);
             snDispatcher = new FileDispatcher("sn", snBufferCache);
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
-            //addMBean("snCache", snBufferCache);
+            addMBean("snCache", snBufferCache);
             snFactory = new PayloadFactory(snBufferCache);
             snSplicedAnalysis = new SBSplicedAnalysis(snDispatcher);
             snSplicer = createSplicer(snSplicedAnalysis);
@@ -238,7 +238,7 @@ public class SBComponent extends DAQComponent
             moniBufferCache = new VitreousBufferCache("SBMoni", 350000000);
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
-            //addMBean("moniCache", moniBufferCache);
+            addMBean("moniCache", moniBufferCache);
             moniFactory = new PayloadFactory(moniBufferCache);
             moniSplicedAnalysis = new MoniAnalysis(moniDispatcher);
             moniSplicer = createSplicer(moniSplicedAnalysis);
@@ -506,7 +506,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15570 2015-06-12 16:19:32Z dglo $";
+        return "$Id: SBComponent.java 15938 2015-12-23 16:54:47Z dglo $";
     }
 
     /**
