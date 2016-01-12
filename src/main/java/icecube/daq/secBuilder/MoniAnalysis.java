@@ -548,10 +548,7 @@ public class MoniAnalysis
 
             synchronized (dv) {
                 dv.putRateAndError(true, speRate, speRateError);
-
-                if (dv.dom.isIceTop()) {
-                    dv.putRateAndError(false, mpeRate, mpeRateError);
-                }
+                dv.putRateAndError(false, mpeRate, mpeRateError);
             }
         }
 
