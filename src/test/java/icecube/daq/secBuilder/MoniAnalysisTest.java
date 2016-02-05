@@ -286,11 +286,7 @@ public class MoniAnalysisTest
 
         HashMap<String, Integer> counts = new HashMap<String, Integer>();
         counts.put(MoniAnalysis.SPE_MONI_NAME, 2);
-        if (fakeIceTop) {
-            counts.put(MoniAnalysis.MPE_MONI_NAME, 2);
-        } else {
-            counts.put(MoniAnalysis.MPE_MONI_NAME, 0);
-        }
+        counts.put(MoniAnalysis.MPE_MONI_NAME, 2);
         counts.put(MoniAnalysis.HVDIFF_MONI_NAME, 2);
         counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
         counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
@@ -807,28 +803,19 @@ class MoniValidator
                                         e.getKey().getStringMajor(),
                                         e.getKey().getStringMinor());
 
-            if (e.getKey().getStringMinor() < 60) {
-                assertFalse("Found unexpected MPE rate for " + omID,
-                            rateMap.containsKey(omID));
-                assertFalse("Found unexpected MPE error for " + omID,
-                            errMap.containsKey(omID));
-            } else {
-                assertTrue("Missing MPE rate for " + omID,
-                           rateMap.containsKey(omID));
-                assertTrue("Missing MPE error for " + omID,
-                           errMap.containsKey(omID));
+            assertTrue("Missing MPE rate for " + omID,
+                       rateMap.containsKey(omID));
+            assertTrue("Missing MPE error for " + omID,
+                       errMap.containsKey(omID));
 
-                final double avg = computeAverage(e.getValue().mpeScalar);
-                assertEquals("Bad " + omID + " MPE rate",
-                             avg, rateMap.get(omID).doubleValue(),
-                             0.001);
+            final double avg = computeAverage(e.getValue().mpeScalar);
+            assertEquals("Bad " + omID + " MPE rate",
+                         avg, rateMap.get(omID).doubleValue(), 0.001);
 
-                final double rms =
-                    computeRMS(e.getValue().mpeScalar);
-                assertEquals("Bad " + omID + " MPE error",
-                             rms, errMap.get(omID).doubleValue(),
-                             0.001);
-            }
+            final double rms =
+                computeRMS(e.getValue().mpeScalar);
+            assertEquals("Bad " + omID + " MPE error",
+                         rms, errMap.get(omID).doubleValue(), 0.001);
         }
     }
 
