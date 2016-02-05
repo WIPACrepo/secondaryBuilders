@@ -10,7 +10,7 @@ import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
-import icecube.daq.payload.impl.ASCIIMonitor;
+import icecube.daq.payload.impl.Monitor;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Spliceable;
 import icecube.daq.splicer.SplicedAnalysis;
@@ -92,9 +92,9 @@ public class SBSplicedAnalysis
                 log.error("Unexpected monitoring error from " + payload, thr);
             }
 
-            // scintillator FastASCII payloads break legacy IceTop software
+            // scintillator monitoring payloads break legacy IceTop software
             if (!STRIP_SCINTILLATOR_MONI ||
-                !skipScintillatorPayload(payload))
+                !isScintillatorMonitor(payload))
             {
                 // limit the byte buffer to the length specified in the header
                 ByteBuffer buf  = payload.getPayloadBacking();
@@ -207,20 +207,18 @@ public class SBSplicedAnalysis
         this.preScaleCount = 1;
     }
 
-    boolean skipScintillatorPayload(IPayload payload)
+    boolean isScintillatorMonitor(IPayload payload)
     {
-        if (!(payload instanceof ASCIIMonitor)) {
-            return false;
+        if (payload instanceof Monitor) {
+            Monitor mon = (Monitor) payload;
+
+            DeployedDOM dom = getDOM(mon.getDomId());
+            if (dom != null) {
+                return dom.isScintillator();
+            }
         }
 
-        ASCIIMonitor mon = (ASCIIMonitor) payload;
-
-        DeployedDOM dom = getDOM(mon.getDomId());
-        if (dom == null) {
-            return false;
-        }
-
-        return dom.isScintillator();
+        return false;
     }
 
     /**
