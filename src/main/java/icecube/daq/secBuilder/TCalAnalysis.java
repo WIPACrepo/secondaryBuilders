@@ -33,9 +33,4 @@ public class TCalAnalysis
     {
         // do nothing
     }
-
-    public void setDOMRegistry(IDOMRegistry domReg)
-    {
-        // do nothing
-    }
 }

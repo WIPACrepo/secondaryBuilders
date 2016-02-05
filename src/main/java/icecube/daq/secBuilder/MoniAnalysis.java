@@ -12,7 +12,6 @@ import icecube.daq.payload.impl.ASCIIMonitor;
 import icecube.daq.payload.impl.HardwareMonitor;
 import icecube.daq.payload.impl.Monitor;
 import icecube.daq.payload.impl.UTCTime;
-import icecube.daq.util.IDOMRegistry;
 import icecube.daq.util.DeployedDOM;
 
 import java.io.IOException;
@@ -63,8 +62,6 @@ public class MoniAnalysis
 
     /** Special value to indicate there is no value for this time */
     private static final long NO_UTCTIME = Long.MIN_VALUE;
-
-    private static IDOMRegistry domRegistry;
 
     private AlertQueue alertQueue;
     private boolean warnedQueueStopped;
@@ -135,12 +132,12 @@ public class MoniAnalysis
     }
 
     /**
-     * Find the DOM with the specified mainboard ID
+     * Find the DOM values for the specified mainboard ID
      *
      * @param map map from mainboard IDs to DOMValues
      * @param mbKey mainboard ID
      *
-     * @return DeployedDOM object
+     * @return DOMValues object
      */
     public DOMValues findDOMValues(HashMap<Long, DOMValues> map, Long mbKey)
     {
@@ -149,7 +146,7 @@ public class MoniAnalysis
             return map.get(mbKey);
         }
 
-        DeployedDOM dom = domRegistry.getDom(mbKey);
+        DeployedDOM dom = getDOM(mbKey);
         if (dom == null) {
             return null;
         }
@@ -205,7 +202,7 @@ public class MoniAnalysis
         throws MoniException
     {
         // make sure we've got everything we need
-        if (domRegistry == null) {
+        if (!hasDOMRegistry()) {
             throw new MoniException("DOM registry has not been set");
         } else if (alertQueue == null) {
             throw new MoniException("AlertQueue has not been set");
@@ -624,16 +621,6 @@ public class MoniAnalysis
         if (alertQueue != null && alertQueue.isStopped()) {
             alertQueue.start();
         }
-    }
-
-    /**
-     * Set the DOM registry object
-     *
-     * @param reg registry
-     */
-    public static void setDOMRegistry(IDOMRegistry reg)
-    {
-        domRegistry = reg;
     }
 
     /**

@@ -10,12 +10,15 @@ import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
+import icecube.daq.payload.impl.ASCIIMonitor;
 import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.Spliceable;
 import icecube.daq.splicer.SplicedAnalysis;
 import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerChangedEvent;
 import icecube.daq.splicer.SplicerListener;
+import icecube.daq.util.IDOMRegistry;
+import icecube.daq.util.DeployedDOM;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
@@ -34,6 +37,12 @@ import org.apache.commons.logging.LogFactory;
 public class SBSplicedAnalysis
     implements SplicedAnalysis<Spliceable>, SplicerListener<Spliceable>
 {
+    private static final boolean STRIP_SCINTILLATOR_MONI = true;
+
+    /** Database of DOM info */
+    private static IDOMRegistry domRegistry;
+    /** Have we complained about a missing DOM registry yet? */
+    private boolean warnedDomRegistry = false;
 
     private Dispatcher dispatcher;
     private Splicer splicer;
@@ -83,29 +92,35 @@ public class SBSplicedAnalysis
                 log.error("Unexpected monitoring error from " + payload, thr);
             }
 
-            // limit the byte buffer to the length specified in the header
-            ByteBuffer buf  = payload.getPayloadBacking();
-            buf.limit(buf.getInt(0));
+            // scintillator FastASCII payloads break legacy IceTop software
+            if (!STRIP_SCINTILLATOR_MONI ||
+                !skipScintillatorPayload(payload))
+            {
+                // limit the byte buffer to the length specified in the header
+                ByteBuffer buf  = payload.getPayloadBacking();
+                buf.limit(buf.getInt(0));
 
-            if (log.isDebugEnabled()) {
-                int recl = buf.getInt(0);
-                int limit = buf.limit();
-                int capacity = buf.capacity();
-                log.debug("Writing " + streamName + " byte buffer - RECL=" +
-                        recl + " LIMIT=" +
-                        limit + " CAP=" +
-                        capacity
-                );
-            }
+                if (log.isDebugEnabled()) {
+                    int recl = buf.getInt(0);
+                    int limit = buf.limit();
+                    int capacity = buf.capacity();
+                    log.debug("Writing " +
+                              streamName + " byte buffer - RECL=" +
+                              recl + " LIMIT=" +
+                              limit + " CAP=" +
+                              capacity
+                              );
+                }
 
-            // write out the payload
-            try {
-                dispatchEvent(buf);
-            } catch (DispatchException de) {
-                if (log.isErrorEnabled() && !reportedError) {
-                    log.error("couldn't dispatch the " + streamName +
-                        " payload: ", de);
-                    reportedError = true;
+                // write out the payload
+                try {
+                    dispatchEvent(buf);
+                } catch (DispatchException de) {
+                    if (log.isErrorEnabled() && !reportedError) {
+                        log.error("couldn't dispatch the " + streamName +
+                                  " payload: ", de);
+                        reportedError = true;
+                    }
                 }
             }
 
@@ -137,6 +152,37 @@ public class SBSplicedAnalysis
     }
 
     /**
+     * Get DOM info associated with the specified mainboard ID.
+     *
+     * @param mbid mainboard ID
+     *
+     * @return <tt>null</tt> if no DOM was found
+     *         (or if no DOM registry has been set)
+     */
+    DeployedDOM getDOM(long mbid)
+    {
+        if (domRegistry == null) {
+            if (!warnedDomRegistry) {
+                log.error("DOM registry has not been set");
+                warnedDomRegistry = true;
+            }
+            return null;
+        }
+
+        return domRegistry.getDom(mbid);
+    }
+
+    /**
+     * Has the dom registry been set?
+     *
+     * @return <tt>false</tt> if there's no DOM registry object
+     */
+    boolean hasDOMRegistry()
+    {
+        return domRegistry != null;
+    }
+
+    /**
      * Set the prescale factor - let through only every 'preScale'
      * events (default=1)
      *
@@ -161,6 +207,21 @@ public class SBSplicedAnalysis
         this.preScaleCount = 1;
     }
 
+    boolean skipScintillatorPayload(IPayload payload)
+    {
+        if (!(payload instanceof ASCIIMonitor)) {
+            return false;
+        }
+
+        ASCIIMonitor mon = (ASCIIMonitor) payload;
+
+        DeployedDOM dom = getDOM(mon.getDomId());
+        if (dom == null) {
+            return false;
+        }
+
+        return dom.isScintillator();
+    }
 
     /**
      * Dispatch an event taking into account any prescale settings
@@ -324,6 +385,16 @@ public class SBSplicedAnalysis
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered STOPPING state");
         }
+    }
+
+    /**
+     * Set the DOM registry object
+     *
+     * @param reg registry
+     */
+    public static void setDOMRegistry(IDOMRegistry reg)
+    {
+        domRegistry = reg;
     }
 
     // set the splicer and add this listener to the splicer
