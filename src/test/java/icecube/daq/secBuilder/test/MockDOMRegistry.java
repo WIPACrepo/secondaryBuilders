@@ -35,6 +35,16 @@ public class MockDOMRegistry
         throw new Error("Unimplemented");
     }
 
+    public Set<DeployedDOM> getDomsOnHub(int hubId)
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public Set<DeployedDOM> getDomsOnString(int string)
+    {
+        throw new Error("Unimplemented");
+    }
+
     public int getStringMajor(long mbid)
     {
         throw new Error("Unimplemented");
