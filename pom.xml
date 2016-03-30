@@ -1,7 +1,4 @@
-<project
-    xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
   <parent>
     <artifactId>pDAQ</artifactId>
@@ -12,7 +9,7 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>secondaryBuilders</artifactId>
   <packaging>jar</packaging>
-  <name>secondaryBuilders</name>
+  <name>Secondary builders</name>
   <description>The secondary builder sub-systems (tcal, moni, sn streams) of the Surface Data Acquisition system for the IceCube Project.</description>
 
   <scm>
@@ -46,6 +43,13 @@
           </execution>
         </executions>
       </plugin>
+     <plugin>
+       <groupId>org.apache.maven.plugins</groupId>
+       <artifactId>maven-surefire-plugin</artifactId>
+       <configuration>
+         <argLine>-Xms1024m -Xmx1024m</argLine>
+       </configuration>
+     </plugin>
     </plugins>
     <resources>
       <resource>
@@ -62,6 +66,23 @@
     <dependency>
       <groupId>edu.wisc.icecube</groupId>
       <artifactId>juggler</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+    </dependency>
+
+    <!-- needed to write HDF5 file -->
+    <dependency>
+      <groupId>ncsa.hdf</groupId>
+      <artifactId>jhdf5</artifactId>
+    </dependency>
+
+    <!-- JHDF5 dependency -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
     </dependency>
   </dependencies>
 

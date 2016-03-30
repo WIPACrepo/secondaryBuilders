@@ -14,9 +14,10 @@ import org.apache.commons.logging.LogFactory;
  * This class provides configuration for secondary builders
  *
  * @author artur
- * @version $Id: SecBuilderCompConfig.java,v 1.0 2006/12/01 07:19:50 artur Exp $
+ * @version $Id: SecBuilderCompConfig.java,v 1.0 2006/12/01 07:19:50 artur Exp$
  */
-public class SecBuilderCompConfig implements SBCompConfig{
+public class SecBuilderCompConfig implements SBCompConfig
+{
 
     private int granularity = 256;
     private long maxCacheByte = 30000000;
@@ -31,7 +32,8 @@ public class SecBuilderCompConfig implements SBCompConfig{
     public SecBuilderCompConfig(int granularity, long maxCacheByte,
                                 long maxAcquireBytes, boolean isTcalEnabled,
                                 boolean isSnEnabled, boolean isMoniEnabled,
-                                boolean isMonitoring){
+                                boolean isMonitoring)
+    {
 
         this.granularity = granularity;
         this.maxCacheByte = maxCacheByte;
@@ -52,7 +54,8 @@ public class SecBuilderCompConfig implements SBCompConfig{
         }
     }
 
-    public SecBuilderCompConfig(){
+    public SecBuilderCompConfig()
+    {
         if (log.isInfoEnabled()) {
             log.info("SBConfigComp parameters: \n" +
                      "granularity = " + granularity + "\n" +
@@ -64,36 +67,38 @@ public class SecBuilderCompConfig implements SBCompConfig{
         }
     }
 
-    // TODO: This is to be decided
-    private SecBuilderCompConfig(String xmlFile){
-        log.error("THIS IS NOT IMPLEMENTED YET");
-    }
-
-    public int getGranularity(){
+    public int getGranularity()
+    {
         return granularity;
     }
 
-    public long getMaxCacheBytes(){
+    public long getMaxCacheBytes()
+    {
         return maxCacheByte;
     }
 
-    public long getMaxAcquireBytes(){
+    public long getMaxAcquireBytes()
+    {
         return maxAcquireBytes;
     }
 
-    public boolean isTcalEnabled(){
+    public boolean isTcalEnabled()
+    {
         return isTcalEnabled;
     }
 
-    public boolean isSnEnabled(){
+    public boolean isSnEnabled()
+    {
         return isSnEnabled;
     }
 
-    public boolean isMoniEnabled(){
+    public boolean isMoniEnabled()
+    {
         return isMoniEnabled;
     }
 
-    public boolean isMonitoring(){
+    public boolean isMonitoring()
+    {
         return isMonitoring;
     }
 }

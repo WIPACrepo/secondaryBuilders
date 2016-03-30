@@ -1,0 +1,62 @@
+package icecube.daq.secBuilder.test;
+
+import icecube.daq.payload.impl.DOMID;
+import icecube.daq.util.IDOMRegistry;
+import icecube.daq.util.DeployedDOM;
+
+
+import java.util.HashMap;
+import java.util.Set;
+
+public class MockDOMRegistry
+    implements IDOMRegistry
+{
+    private HashMap<Long, DeployedDOM> doms =
+        new HashMap<Long, DeployedDOM>();
+
+    public void addDom(long mbId, int string, int position)
+    {
+        DeployedDOM dom = new DeployedDOM(mbId, string, position);
+        doms.put(mbId, dom);
+    }
+
+    public short getChannelId(long mbId)
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public DeployedDOM getDom(long mbId)
+    {
+        return doms.get(mbId);
+    }
+
+    public DeployedDOM getDom(short chanid)
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public int getStringMajor(long mbid)
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public int getStringMinor(long mbid)
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public Set<Long> keys()
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public int size()
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public double distanceBetweenDOMs(long mbid0, long mbid1)
+    {
+        throw new Error("Unimplemented");
+    }
+}

@@ -3,7 +3,8 @@ package icecube.daq.secBuilder;
 /**
  * Provides the methods for monitoring the secondaryBuilders
  */
-public interface SecBuilderMonitorMBean {
+public interface SecBuilderMonitorMBean
+{
 
     /**
      * Get the type of data (i.e. tcal, sn, moni)
@@ -28,6 +29,12 @@ public interface SecBuilderMonitorMBean {
      * @return an int value
      */
     int getStrandCount();
+
+    /**
+     * Get the amount of dispatched data for the current run
+     * @return a long value
+     */
+    long getNumDispatchedData();
 
     /**
      * Get the total of the dispatched data
