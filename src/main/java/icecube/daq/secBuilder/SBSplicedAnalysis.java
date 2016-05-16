@@ -37,7 +37,7 @@ import org.apache.commons.logging.LogFactory;
 public class SBSplicedAnalysis
     implements SplicedAnalysis<Spliceable>, SplicerListener<Spliceable>
 {
-    private static final boolean STRIP_SCINTILLATOR_MONI = true;
+    private static final boolean STRIP_NONSTANDARD_MONI = true;
 
     /** Database of DOM info */
     private static IDOMRegistry domRegistry;
@@ -92,10 +92,9 @@ public class SBSplicedAnalysis
                 log.error("Unexpected monitoring error from " + payload, thr);
             }
 
-            // scintillator monitoring payloads break legacy IceTop software
-            if (!STRIP_SCINTILLATOR_MONI ||
-                !isScintillatorMonitor(payload))
-            {
+            // scintillator/IceACT monitoring payloads break
+            // legacy IceTop software
+            if (!STRIP_NONSTANDARD_MONI || !isNonStandardDOM(payload)) {
                 // limit the byte buffer to the length specified in the header
                 ByteBuffer buf  = payload.getPayloadBacking();
                 buf.limit(buf.getInt(0));
@@ -207,14 +206,21 @@ public class SBSplicedAnalysis
         this.preScaleCount = 1;
     }
 
-    boolean isScintillatorMonitor(IPayload payload)
+    /**
+     * Is this a monitoring payload from a scintillator or IceACT DOM?
+     *
+     * @param payload payload to check
+     *
+     * @return <tt>true</tt> if this is a non-standard DOM
+     */
+    boolean isNonStandardDOM(IPayload payload)
     {
         if (payload instanceof Monitor) {
             Monitor mon = (Monitor) payload;
 
             DeployedDOM dom = getDOM(mon.getDomId());
             if (dom != null) {
-                return dom.isScintillator();
+                return dom.isScintillator() || dom.isIceACT();
             }
         }
 
