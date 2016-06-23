@@ -6,7 +6,6 @@ import icecube.daq.juggler.alert.AlertException;
 import icecube.daq.juggler.alert.AlertQueue;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
-import icecube.daq.payload.IUTCTime;
 import icecube.daq.payload.PayloadFormatException;
 import icecube.daq.payload.impl.ASCIIMonitor;
 import icecube.daq.payload.impl.HardwareMonitor;
@@ -71,8 +70,6 @@ public class MoniAnalysis
 
     private HashMap<Long, DOMValues> domValues =
         new HashMap<Long, DOMValues>();
-
-    private boolean sentHVSet;
 
     private FastMoniHDF fastMoni;
     private boolean noJHDFLib;

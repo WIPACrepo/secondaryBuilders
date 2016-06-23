@@ -25,7 +25,6 @@ import icecube.daq.splicer.PrioritySplicer;
 import icecube.daq.splicer.Spliceable;
 import icecube.daq.splicer.SpliceableComparator;
 import icecube.daq.splicer.SpliceableFactory;
-import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.SplicedAnalysis;
 import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerException;
@@ -56,7 +55,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15938 2015-12-23 16:54:47Z dglo $
+ * @version $Id: SBComponent.java 16158 2016-06-23 20:35:31Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -295,14 +294,14 @@ public class SBComponent extends DAQComponent
      *
      * @return <tt>true</tt> if the string has a "true" value
      */
-    private static final boolean parseBoolean(String str)
+    private static boolean parseBoolean(String str)
     {
         if (str == null) {
             return false;
         }
 
         return str.equalsIgnoreCase("true") || str.equalsIgnoreCase("yes") ||
-            str == "1";
+            str.equals("1");
     }
 
     /**
@@ -506,7 +505,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15938 2015-12-23 16:54:47Z dglo $";
+        return "$Id: SBComponent.java 16158 2016-06-23 20:35:31Z dglo $";
     }
 
     /**

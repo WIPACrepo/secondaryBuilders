@@ -21,7 +21,6 @@ import icecube.daq.util.IDOMRegistry;
 import icecube.daq.util.DeployedDOM;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -72,9 +71,6 @@ public class SBSplicedAnalysis
      */
     public void analyze(List<Spliceable> splicedObjects)
     {
-        // Loop over the new objects in the splicer
-        int numberOfObjectsInSplicer = splicedObjects.size();
-
         for (Spliceable spl : splicedObjects) {
             if (spl == SpliceableFactory.LAST_POSSIBLE_SPLICEABLE) {
                 break;
