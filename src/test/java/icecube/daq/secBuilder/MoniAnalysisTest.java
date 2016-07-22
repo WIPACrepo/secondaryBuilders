@@ -66,11 +66,15 @@ public class MoniAnalysisTest
         MockDOMRegistry reg = new MockDOMRegistry();
         for (int i = 0; i < 16; i++) {
             int loc = i;
+            int str = (i >> 3) + 1;
+            int hub = str;
+
             if (fakeIcetop && loc > 12) {
                 loc = i + 48;
+                hub = str + 200;
             }
 
-            reg.addDom((long) i, i >> 3, loc);
+            reg.addDom((long) i, str, loc + 1, hub);
         }
 
         return reg;

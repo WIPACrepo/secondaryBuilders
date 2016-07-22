@@ -15,8 +15,23 @@ public class MockDOMRegistry
 
     public void addDom(long mbId, int string, int position)
     {
-        DeployedDOM dom = new DeployedDOM(mbId, string, position);
+        addDom(mbId, string, position, string);
+    }
+
+    public void addDom(long mbId, int string, int position, int hub)
+    {
+        DeployedDOM dom = new DeployedDOM(mbId, string, position, hub);
         doms.put(mbId, dom);
+    }
+
+    public double distanceBetweenDOMs(DeployedDOM dom0, DeployedDOM dom1)
+    {
+        throw new Error("Unimplemented");
+    }
+
+    public double distanceBetweenDOMs(long mbid0, long mbid1)
+    {
+        throw new Error("Unimplemented");
     }
 
     public short getChannelId(long mbId)
@@ -70,11 +85,6 @@ public class MockDOMRegistry
     }
 
     public int size()
-    {
-        throw new Error("Unimplemented");
-    }
-
-    public double distanceBetweenDOMs(long mbid0, long mbid1)
     {
         throw new Error("Unimplemented");
     }
