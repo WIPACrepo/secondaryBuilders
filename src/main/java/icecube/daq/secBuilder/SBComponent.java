@@ -55,7 +55,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 16158 2016-06-23 20:35:31Z dglo $
+ * @version $Id: SBComponent.java 16198 2016-08-12 20:48:03Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -123,6 +123,8 @@ public class SBComponent extends DAQComponent
     private SBSplicedAnalysis snSplicedAnalysis;
     private MoniAnalysis moniSplicedAnalysis;
 
+    private String dispatchDir;
+
     private Dispatcher tcalDispatcher;
     private Dispatcher snDispatcher;
     private Dispatcher moniDispatcher;
@@ -135,6 +137,7 @@ public class SBComponent extends DAQComponent
     private SpliceablePayloadReader snInputEngine;
     private SpliceablePayloadReader moniInputEngine;
 
+    private boolean isMonitoring;
     private boolean isTcalEnabled;
     private boolean isSnEnabled;
     private boolean isMoniEnabled;
@@ -156,18 +159,27 @@ public class SBComponent extends DAQComponent
     {
         super(COMP_NAME, COMP_ID);
 
-        boolean isMonitoring = compConfig.isMonitoring();
+        isMonitoring = compConfig.isMonitoring();
         isTcalEnabled = compConfig.isTcalEnabled();
         isSnEnabled = compConfig.isSnEnabled();
         isMoniEnabled = compConfig.isMoniEnabled();
+    }
 
+    public void initialize()
+        throws DAQCompException
+    {
         // init tcalBuilder classes
-        if (isTcalEnabled) {
+        if (!isTcalEnabled) {
+            tcalDispatcher = null;
+        } else {
             if (LOG.isInfoEnabled()) {
                 LOG.info("Constructing TcalBuilder");
             }
             tcalBufferCache = new VitreousBufferCache("SBTCal", 350000000);
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
+            if (dispatchDir != null) {
+                tcalDispatcher.setDispatchDestStorage(dispatchDir);
+            }
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             addMBean("tcalCache", tcalBufferCache);
             tcalFactory = new PayloadFactory(tcalBufferCache);
@@ -197,12 +209,17 @@ public class SBComponent extends DAQComponent
         }
 
         // init snBuilder
-        if (isSnEnabled) {
+        if (!isSnEnabled) {
+            snDispatcher = null;
+        } else {
             if (LOG.isInfoEnabled()) {
                 LOG.info("Constructing SNBuilder");
             }
             snBufferCache = new VitreousBufferCache("SBSN", 500000000);
             snDispatcher = new FileDispatcher("sn", snBufferCache);
+            if (dispatchDir != null) {
+                snDispatcher.setDispatchDestStorage(dispatchDir);
+            }
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             addMBean("snCache", snBufferCache);
             snFactory = new PayloadFactory(snBufferCache);
@@ -230,12 +247,17 @@ public class SBComponent extends DAQComponent
         }
 
         // init moniBuilder classes
-        if (isMoniEnabled) {
+        if (!isMoniEnabled) {
+            moniDispatcher = null;
+        } else {
             if (LOG.isInfoEnabled()) {
                 LOG.info("Constructing MoniBuilder");
             }
             moniBufferCache = new VitreousBufferCache("SBMoni", 350000000);
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
+            if (dispatchDir != null) {
+                moniDispatcher.setDispatchDestStorage(dispatchDir);
+            }
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             addMBean("moniCache", moniBufferCache);
             moniFactory = new PayloadFactory(moniBufferCache);
@@ -469,14 +491,16 @@ public class SBComponent extends DAQComponent
      */
     public void setDispatchDestStorage(String dirName)
     {
-        if (isTcalEnabled) {
-            tcalDispatcher.setDispatchDestStorage(dirName);
+        dispatchDir = dirName;
+
+        if (tcalDispatcher != null) {
+            tcalDispatcher.setDispatchDestStorage(dispatchDir);
         }
-        if (isSnEnabled) {
-            snDispatcher.setDispatchDestStorage(dirName);
+        if (snDispatcher != null) {
+            snDispatcher.setDispatchDestStorage(dispatchDir);
         }
-        if (isMoniEnabled) {
-            moniDispatcher.setDispatchDestStorage(dirName);
+        if (moniDispatcher != null) {
+            moniDispatcher.setDispatchDestStorage(dispatchDir);
         }
     }
 
@@ -505,7 +529,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 16158 2016-06-23 20:35:31Z dglo $";
+        return "$Id: SBComponent.java 16198 2016-08-12 20:48:03Z dglo $";
     }
 
     /**
