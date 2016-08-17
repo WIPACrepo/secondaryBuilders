@@ -44,6 +44,11 @@ public class MockDOMRegistry
         return doms.get(mbId);
     }
 
+    public DeployedDOM getDom(int major, int minor)
+    {
+        throw new Error("Unimplemented");
+    }
+
     public DeployedDOM getDom(short chanid)
     {
         throw new Error("Unimplemented");
