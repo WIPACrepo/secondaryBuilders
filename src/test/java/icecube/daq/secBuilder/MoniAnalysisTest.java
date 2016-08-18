@@ -292,6 +292,7 @@ public class MoniAnalysisTest
         counts.put(MoniAnalysis.SPE_MONI_NAME, 2);
         counts.put(MoniAnalysis.MPE_MONI_NAME, 2);
         counts.put(MoniAnalysis.HVDIFF_MONI_NAME, 2);
+        counts.put(MoniAnalysis.MBTEMP_MONI_NAME, 2);
         counts.put(MoniAnalysis.DEADTIME_MONI_NAME, 1);
         counts.put(MoniAnalysis.POWER_MONI_NAME, 1);
 
@@ -304,6 +305,10 @@ public class MoniAnalysisTest
 
             alerter.clear(e.getKey());
         }
+
+
+        assertEquals("Bad number of extra alert messages",
+                     0, alerter.countAllAlerts());
     }
 
     private void sendFile(MoniAnalysis ma, File path)
@@ -736,6 +741,8 @@ class MoniValidator
                 validateSPE(ad, expMap);
             } else if (nm == MoniAnalysis.HVDIFF_MONI_NAME) {
                 validateHV(ad, expMap);
+            } else if (nm == MoniAnalysis.MBTEMP_MONI_NAME) {
+                validateTemp(ad, expMap);
             } else {
                 fail("Not validating binned " + nm);
             }
@@ -877,6 +884,32 @@ class MoniValidator
         }
     }
 
+    private void validateTemp(AlertData ad,
+                              Map<DeployedDOM, MoniTotals> expMap)
+    {
+        Map<String, Double> valueMap =
+            ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
+
+        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            String omID = String.format("(%d, %d)",
+                                        e.getKey().getStringMajor(),
+                                        e.getKey().getStringMinor());
+
+            if (e.getValue().hardCount == 0) {
+                assertFalse("Found unexpected temperature value for " + omID,
+                            valueMap.containsKey(omID));
+            } else {
+                assertTrue("Missing temperature value for " + omID,
+                           valueMap.containsKey(omID));
+
+                double avg = (double) e.getValue().tempTotal /
+                    (double) e.getValue().hardCount;
+                assertEquals("Bad " + omID + " temperature",
+                             avg, valueMap.get(omID).doubleValue(), 0.001);
+            }
+        }
+    }
+
     private void validateTotals(MockAlerter alerter, String nm)
     {
         final AlertData ad = alerter.get(nm, 0);
@@ -914,6 +947,7 @@ class MoniValidator
         boolean baseSet;
         long hvTotal;
         long power5VTotal;
+        long tempTotal;
         int hardCount;
 
         void add(ASCIIMonitor mon)
@@ -950,6 +984,7 @@ class MoniValidator
             }
             hvTotal += mon.getPMTBaseHVMonitorValue();
             power5VTotal += mon.getADC5VPowerSupply();
+            tempTotal += mon.getMBTemperature();
             hardCount++;
         }
 
@@ -964,7 +999,7 @@ class MoniValidator
                 baseSet = mt.baseSet;
             }
 
-            // ignore binned HV values
+            // ignore binned HV and temperature values
             power5VTotal += mt.power5VTotal;
             hardCount += mt.hardCount;
         }
@@ -975,8 +1010,9 @@ class MoniValidator
                 (double) hardCount;
 
             double powerVolt = (double) power5VTotal * cvtVolt;
-            return String.format("spe %s mpe %s hv %d power %f", speScalar,
-                                 mpeScalar, hvTotal, powerVolt);
+            return String.format("spe %s mpe %s hv %d temp %d power %f",
+                                 speScalar, mpeScalar, hvTotal, tempTotal,
+                                 powerVolt);
         }
     }
 }

@@ -39,6 +39,11 @@ public class MoniAnalysis
     /** Power supply voltage message version number */
     public static final int POWER_MONI_VERSION = 0;
 
+    /** Mainboard temperature message variable name */
+    public static final String MBTEMP_MONI_NAME = "dom_temperature";
+    /** Mainboard temperature message version number */
+    public static final int MBTEMP_MONI_VERSION = 0;
+
     /** SPE monitoring message variable name */
     public static final String SPE_MONI_NAME = "dom_spe_moni_rate";
     /** MPE monitoring message variable name */
@@ -284,6 +289,9 @@ public class MoniAnalysis
 
                     dval.power5VTotal += mon.getADC5VPowerSupply();
                     dval.power5VCount++;
+
+                    dval.mbTempTotal += mon.getMBTemperature();
+                    dval.mbTempCount++;
                 }
             }
         } else if (payload instanceof ASCIIMonitor) {
@@ -429,11 +437,11 @@ public class MoniAnalysis
         }
 
         if (map.size() > 0) {
-            HashMap valueMap = new HashMap();
-            valueMap.put("version", DEADTIME_MONI_VERSION);
-            valueMap.put("runNumber", getRunNumber());
-            valueMap.put(MONI_VALUE_FIELD, map);
-            sendMessage(DEADTIME_MONI_NAME, valueMap);
+            HashMap msg = new HashMap();
+            msg.put("version", DEADTIME_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_VALUE_FIELD, map);
+            sendMessage(DEADTIME_MONI_NAME, msg);
         }
     }
 
@@ -445,7 +453,7 @@ public class MoniAnalysis
      */
     private void sendHV(String startTime, String endTime)
     {
-        HashMap<String, Double> diffMap = new HashMap<String, Double>();
+        HashMap<String, Double> map = new HashMap<String, Double>();
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
@@ -471,17 +479,59 @@ public class MoniAnalysis
 
             }
 
-            diffMap.put(dv.getOmID(), voltage - expected);
+            map.put(dv.getOmID(), voltage - expected);
         }
 
-        if (diffMap.size() > 0) {
-            HashMap hvMsg = new HashMap();
-            hvMsg.put("recordingStartTime", startTime);
-            hvMsg.put("recordingStopTime", endTime);
-            hvMsg.put("version", HV_MONI_VERSION);
-            hvMsg.put("runNumber", getRunNumber());
-            hvMsg.put(MONI_VALUE_FIELD, diffMap);
-            sendMessage(HVDIFF_MONI_NAME, hvMsg);
+        if (map.size() > 0) {
+            HashMap msg = new HashMap();
+            msg.put("recordingStartTime", startTime);
+            msg.put("recordingStopTime", endTime);
+            msg.put("version", HV_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_VALUE_FIELD, map);
+            sendMessage(HVDIFF_MONI_NAME, msg);
+        }
+    }
+
+    /**
+     * Send average mainboard temperature
+     */
+    private void sendTemperature(String startTime, String endTime)
+    {
+        HashMap<String, Double> map = new HashMap<String, Double>();
+
+        for (Long mbKey : domValues.keySet()) {
+            DOMValues dv = domValues.get(mbKey);
+
+            double avg;
+            synchronized (dv) {
+                if (dv.mbTempCount == 0) {
+                    if (dv.mbTempTotal > 0) {
+                        LOG.error("Found MB temperature " + dv.mbTempTotal +
+                                  " total with 0 count for " + dv.getOmID());
+                        dv.mbTempTotal = 0;
+                    }
+
+                    // skip DOM if there were no reported values
+                    continue;
+                }
+
+                avg = (double) dv.mbTempTotal / (double) dv.mbTempCount;
+                dv.mbTempTotal = 0;
+                dv.mbTempCount = 0;
+            }
+
+            map.put(dv.getOmID(), avg);
+        }
+
+        if (map.size() > 0) {
+            HashMap msg = new HashMap();
+            msg.put("recordingStartTime", startTime);
+            msg.put("recordingStopTime", endTime);
+            msg.put("version", MBTEMP_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_VALUE_FIELD, map);
+            sendMessage(MBTEMP_MONI_NAME, msg);
         }
     }
 
@@ -516,11 +566,11 @@ public class MoniAnalysis
         }
 
         if (map.size() > 0) {
-            HashMap valueMap = new HashMap();
-            valueMap.put("version", POWER_MONI_VERSION);
-            valueMap.put("runNumber", getRunNumber());
-            valueMap.put(MONI_VALUE_FIELD, map);
-            sendMessage(POWER_MONI_NAME, valueMap);
+            HashMap msg = new HashMap();
+            msg.put("version", POWER_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_VALUE_FIELD, map);
+            sendMessage(POWER_MONI_NAME, msg);
         }
     }
 
@@ -547,25 +597,25 @@ public class MoniAnalysis
         }
 
         if (speRate.size() > 0) {
-            HashMap speMsg = new HashMap();
-            speMsg.put("recordingStartTime", startTime);
-            speMsg.put("recordingStopTime", endTime);
-            speMsg.put("version", SPE_MPE_MONI_VERSION);
-            speMsg.put("runNumber", getRunNumber());
-            speMsg.put(MONI_RATE_FIELD, speRate);
-            speMsg.put(MONI_ERROR_FIELD, speRateError);
-            sendMessage(SPE_MONI_NAME, speMsg);
+            HashMap msg = new HashMap();
+            msg.put("recordingStartTime", startTime);
+            msg.put("recordingStopTime", endTime);
+            msg.put("version", SPE_MPE_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_RATE_FIELD, speRate);
+            msg.put(MONI_ERROR_FIELD, speRateError);
+            sendMessage(SPE_MONI_NAME, msg);
         }
 
         if (mpeRate.size() > 0) {
-            HashMap mpeMsg = new HashMap();
-            mpeMsg.put("recordingStartTime", startTime);
-            mpeMsg.put("recordingStopTime", endTime);
-            mpeMsg.put("version", SPE_MPE_MONI_VERSION);
-            mpeMsg.put("runNumber", getRunNumber());
-            mpeMsg.put(MONI_RATE_FIELD, mpeRate);
-            mpeMsg.put(MONI_ERROR_FIELD, mpeRateError);
-            sendMessage(MPE_MONI_NAME, mpeMsg);
+            HashMap msg = new HashMap();
+            msg.put("recordingStartTime", startTime);
+            msg.put("recordingStopTime", endTime);
+            msg.put("version", SPE_MPE_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_RATE_FIELD, mpeRate);
+            msg.put(MONI_ERROR_FIELD, mpeRateError);
+            sendMessage(MPE_MONI_NAME, msg);
         }
     }
 
@@ -579,6 +629,7 @@ public class MoniAnalysis
     {
         sendSPEMPE(startTime, endTime);
         sendHV(startTime, endTime);
+        sendTemperature(startTime, endTime);
     }
 
     private void sendMessage(String varname, Map<String, Object> value)
@@ -668,6 +719,9 @@ public class MoniAnalysis
 
         long deadtimeTotal;
         int deadtimeCount;
+
+        long mbTempTotal;
+        int mbTempCount;
 
         // OM ID generated from deployed DOM's major/minor values
         private String omId;
@@ -764,11 +818,14 @@ public class MoniAnalysis
         public String toString()
         {
             return String.format("%s: spe %s mpe %s baseVoltage %.2f" +
-                                 " hvTot %d hvCnt %d 5VTot %d 5VCnt %d" +
-                                 " deadTot %d deadCnt %d",
+                                 " hvTot %d hvCnt %d" +
+                                 " 5VTot %d 5VCnt %d" +
+                                 " deadTot %d deadCnt %d" +
+                                 " mbTemp %d mbTempCnt %d",
                                  getOmID(), speScalar, mpeScalar, baseVoltage,
                                  hvTotal, hvCount, power5VTotal, power5VCount,
-                                 deadtimeTotal, deadtimeCount);
+                                 deadtimeTotal, deadtimeCount, mbTempTotal,
+                                 mbTempCount);
         }
     }
 }
