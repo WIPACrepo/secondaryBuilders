@@ -947,7 +947,7 @@ class MoniValidator
         boolean baseSet;
         long hvTotal;
         long power5VTotal;
-        long tempTotal;
+        double tempTotal;
         int hardCount;
 
         void add(ASCIIMonitor mon)
@@ -984,7 +984,8 @@ class MoniValidator
             }
             hvTotal += mon.getPMTBaseHVMonitorValue();
             power5VTotal += mon.getADC5VPowerSupply();
-            tempTotal += mon.getMBTemperature();
+            tempTotal +=
+                MoniAnalysis.translateTemperature(mon.getMBTemperature());
             hardCount++;
         }
 
@@ -1010,7 +1011,7 @@ class MoniValidator
                 (double) hardCount;
 
             double powerVolt = (double) power5VTotal * cvtVolt;
-            return String.format("spe %s mpe %s hv %d temp %d power %f",
+            return String.format("spe %s mpe %s hv %d temp %f power %f",
                                  speScalar, mpeScalar, hvTotal, tempTotal,
                                  powerVolt);
         }

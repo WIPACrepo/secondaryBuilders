@@ -290,7 +290,8 @@ public class MoniAnalysis
                     dval.power5VTotal += mon.getADC5VPowerSupply();
                     dval.power5VCount++;
 
-                    dval.mbTempTotal += mon.getMBTemperature();
+                    dval.mbTempTotal +=
+                        translateTemperature(mon.getMBTemperature());
                     dval.mbTempCount++;
                 }
             }
@@ -506,18 +507,18 @@ public class MoniAnalysis
             double avg;
             synchronized (dv) {
                 if (dv.mbTempCount == 0) {
-                    if (dv.mbTempTotal > 0) {
+                    if (dv.mbTempTotal > 0.0) {
                         LOG.error("Found MB temperature " + dv.mbTempTotal +
                                   " total with 0 count for " + dv.getOmID());
-                        dv.mbTempTotal = 0;
+                        dv.mbTempTotal = 0.0;
                     }
 
                     // skip DOM if there were no reported values
                     continue;
                 }
 
-                avg = (double) dv.mbTempTotal / (double) dv.mbTempCount;
-                dv.mbTempTotal = 0;
+                avg = dv.mbTempTotal / (double) dv.mbTempCount;
+                dv.mbTempTotal = 0.0;
                 dv.mbTempCount = 0;
             }
 
@@ -697,6 +698,29 @@ public class MoniAnalysis
     }
 
     /**
+     * Convert ADC units into a celsius temperature
+     * @param rawValue raw ADC value
+     * @return temperature in centigrade
+     */
+    public static double translateTemperature(short rawValue)
+    {
+        // top 8 bits are the integral part of the temperature
+        double temp = (double) (rawValue >> 8);
+
+        // extract fractional part of temperature
+        // (only top 4 bits are significant)
+        short mask = 0x80;
+        for (int i = 0; i < 4; i++) {
+            if ((rawValue & mask) != 0) {
+                temp += 1.0 / (1 << (i + 1));
+            }
+            mask >>= 1;
+        }
+
+        return temp;
+    }
+
+    /**
      * Per-DOM monitoring data
      */
     private static class DOMValues
@@ -720,7 +744,7 @@ public class MoniAnalysis
         long deadtimeTotal;
         int deadtimeCount;
 
-        long mbTempTotal;
+        double mbTempTotal;
         int mbTempCount;
 
         // OM ID generated from deployed DOM's major/minor values
@@ -786,6 +810,14 @@ public class MoniAnalysis
             return omId;
         }
 
+        /**
+         * Fill <tt>rate</tt> and <tt>rateError</tt> maps with string-position
+         * keys mapped to SPE/MPE values
+         *
+         * @param useSPE <tt>true</tt> if filling maps with SPE values
+         * @param rate map holding rate values
+         * @param rateError map holding error values
+         */
         void putRateAndError(boolean useSPE, HashMap<String, Double> rate,
                              HashMap<String, Double> rateError)
         {
@@ -821,7 +853,7 @@ public class MoniAnalysis
                                  " hvTot %d hvCnt %d" +
                                  " 5VTot %d 5VCnt %d" +
                                  " deadTot %d deadCnt %d" +
-                                 " mbTemp %d mbTempCnt %d",
+                                 " mbTemp %.8f mbTempCnt %d",
                                  getOmID(), speScalar, mpeScalar, baseVoltage,
                                  hvTotal, hvCount, power5VTotal, power5VCount,
                                  deadtimeTotal, deadtimeCount, mbTempTotal,
