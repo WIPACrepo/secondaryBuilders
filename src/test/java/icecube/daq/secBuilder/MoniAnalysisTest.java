@@ -755,9 +755,7 @@ class MoniValidator
         Map<String, Double> valueMap =
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
         for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
-            String omID = String.format("(%d, %d)",
-                                        e.getKey().getStringMajor(),
-                                        e.getKey().getStringMinor());
+            String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().asciiCount == 0) {
                 assertFalse("Found unexpected Deadtime value for " + omID,
@@ -781,9 +779,7 @@ class MoniValidator
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
 
         for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
-            String omID = String.format("(%d, %d)",
-                                        e.getKey().getStringMajor(),
-                                        e.getKey().getStringMinor());
+            String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().hardCount == 0) {
                 assertFalse("Found unexpected HV value for " + omID,
@@ -810,9 +806,7 @@ class MoniValidator
             ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
 
         for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
-            String omID = String.format("(%d, %d)",
-                                        e.getKey().getStringMajor(),
-                                        e.getKey().getStringMinor());
+            String omID = e.getKey().getDeploymentLocation();
 
             assertTrue("Missing MPE rate for " + omID,
                        rateMap.containsKey(omID));
@@ -836,9 +830,7 @@ class MoniValidator
         Map<String, Double> valueMap =
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
         for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
-            String omID = String.format("(%d, %d)",
-                                        e.getKey().getStringMajor(),
-                                        e.getKey().getStringMinor());
+            String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().hardCount == 0) {
                 assertFalse("Found unexpected Power value for " + omID,
@@ -864,9 +856,7 @@ class MoniValidator
             ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
 
         for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
-            String omID = String.format("(%d, %d)",
-                                        e.getKey().getStringMajor(),
-                                        e.getKey().getStringMinor());
+            String omID = e.getKey().getDeploymentLocation();
 
             assertTrue("Missing SPE rate for " + omID,
                        rateMap.containsKey(omID));
@@ -891,9 +881,7 @@ class MoniValidator
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
 
         for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
-            String omID = String.format("(%d, %d)",
-                                        e.getKey().getStringMajor(),
-                                        e.getKey().getStringMinor());
+            String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().hardCount == 0) {
                 assertFalse("Found unexpected temperature value for " + omID,

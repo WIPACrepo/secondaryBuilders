@@ -833,8 +833,7 @@ public class MoniAnalysis
         public String getOmID()
         {
             if (omId == null) {
-                omId = String.format("(%d, %d)", dom.getStringMajor(),
-                                     dom.getStringMinor());
+                omId = dom.getDeploymentLocation();
             }
 
             return omId;
