@@ -70,6 +70,9 @@ public class MoniAnalysis
     private AlertQueue alertQueue;
     private boolean warnedQueueStopped;
 
+    private long runStartTime = NO_UTCTIME;
+    private long runEndTime = NO_UTCTIME;
+
     private long binStartTime = NO_UTCTIME;
     private long binEndTime = NO_UTCTIME;
 
@@ -177,6 +180,8 @@ public class MoniAnalysis
             } else {
                 sendBinnedMonitorValues(startTime, endTime);
             }
+
+            runEndTime = binEndTime;
         }
 
         sendSummaryMonitorValues();
@@ -232,6 +237,9 @@ public class MoniAnalysis
         // if this is the first value, set the binning start time
         if (binStartTime == NO_UTCTIME) {
             binStartTime = payload.getUTCTime();
+            if (runStartTime == NO_UTCTIME) {
+                runStartTime = binStartTime;
+            }
         }
 
         // save previous end time, set current end time
@@ -404,7 +412,7 @@ public class MoniAnalysis
     /**
      * Send average deadtime
      */
-    private void sendDeadtime()
+    private void sendDeadtime(String startTime, String endTime)
     {
         HashMap<String, Double> map = new HashMap<String, Double>();
 
@@ -441,6 +449,12 @@ public class MoniAnalysis
             HashMap msg = new HashMap();
             msg.put("version", DEADTIME_MONI_VERSION);
             msg.put("runNumber", getRunNumber());
+
+            if (startTime != null && endTime != null) {
+                msg.put("recordingStartTime", startTime);
+                msg.put("recordingStopTime", endTime);
+            }
+
             msg.put(MONI_VALUE_FIELD, map);
             sendMessage(DEADTIME_MONI_NAME, msg);
         }
@@ -539,7 +553,7 @@ public class MoniAnalysis
     /**
      * Send average Power Supply voltage
      */
-    private void sendPower()
+    private void sendPower(String startTime, String endTime)
     {
         HashMap<String, Double> map = new HashMap<String, Double>();
 
@@ -571,6 +585,12 @@ public class MoniAnalysis
             msg.put("version", POWER_MONI_VERSION);
             msg.put("runNumber", getRunNumber());
             msg.put(MONI_VALUE_FIELD, map);
+
+            if (startTime != null && endTime != null) {
+                msg.put("recordingStartTime", startTime);
+                msg.put("recordingStopTime", endTime);
+            }
+
             sendMessage(POWER_MONI_NAME, msg);
         }
     }
@@ -650,8 +670,18 @@ public class MoniAnalysis
      */
     private void sendSummaryMonitorValues()
     {
-        sendDeadtime();
-        sendPower();
+        String startTime, endTime;
+
+        if (runStartTime == NO_UTCTIME || runEndTime == NO_UTCTIME) {
+            startTime = null;
+            endTime = null;
+        } else {
+            startTime = UTCTime.toDateString(runStartTime);
+            endTime = UTCTime.toDateString(runEndTime);
+        }
+
+        sendDeadtime(startTime, endTime);
+        sendPower(startTime, endTime);
     }
 
     /**
