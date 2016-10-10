@@ -20,7 +20,7 @@ import icecube.daq.secBuilder.test.MockDispatcher;
 import icecube.daq.secBuilder.test.MockPayload;
 import icecube.daq.secBuilder.test.MockSpliceableFactory;
 import icecube.daq.secBuilder.test.MockUTCTime;
-import icecube.daq.util.DeployedDOM;
+import icecube.daq.util.DOMInfo;
 import icecube.daq.util.IDOMRegistry;
 
 import java.io.File;
@@ -643,9 +643,9 @@ class MoniValidator
     private MockDOMRegistry reg;
 
     private long curTime = Long.MIN_VALUE;
-    private ArrayList<Map<DeployedDOM, MoniTotals>> allTotals =
-        new ArrayList<Map<DeployedDOM, MoniTotals>>();
-    private HashMap<DeployedDOM, MoniTotals> curTotals;
+    private ArrayList<Map<DOMInfo, MoniTotals>> allTotals =
+        new ArrayList<Map<DOMInfo, MoniTotals>>();
+    private HashMap<DOMInfo, MoniTotals> curTotals;
 
     MoniValidator(MockDOMRegistry reg)
     {
@@ -657,7 +657,7 @@ class MoniValidator
     {
         mon.loadPayload();
 
-        DeployedDOM dom = reg.getDom(mon.getDomId());
+        DOMInfo dom = reg.getDom(mon.getDomId());
         if (!curTotals.containsKey(dom)) {
             curTotals.put(dom, new MoniTotals());
         }
@@ -669,7 +669,7 @@ class MoniValidator
     {
         mon.loadPayload();
 
-        DeployedDOM dom = reg.getDom(mon.getDomId());
+        DOMInfo dom = reg.getDom(mon.getDomId());
         if (!curTotals.containsKey(dom)) {
             curTotals.put(dom, new MoniTotals());
         }
@@ -714,7 +714,7 @@ class MoniValidator
         if (time > curTime + 600) {
             endBin();
 
-            curTotals = new HashMap<DeployedDOM, MoniTotals>();
+            curTotals = new HashMap<DOMInfo, MoniTotals>();
 
             curTime = time;
         }
@@ -733,7 +733,7 @@ class MoniValidator
     {
         for (int i = 0; i < alerter.countAlerts(nm); i++) {
             AlertData ad = alerter.get(nm, i);
-            Map<DeployedDOM, MoniTotals> expMap = allTotals.get(i);
+            Map<DOMInfo, MoniTotals> expMap = allTotals.get(i);
 
             if (nm == MoniAnalysis.MPE_MONI_NAME) {
                 validateMPE(ad, expMap);
@@ -750,11 +750,11 @@ class MoniValidator
     }
 
     private void validateDeadtime(AlertData ad,
-                                  Map<DeployedDOM, MoniTotals> expMap)
+                                  Map<DOMInfo, MoniTotals> expMap)
     {
         Map<String, Double> valueMap =
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
-        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+        for (Map.Entry<DOMInfo, MoniTotals> e : expMap.entrySet()) {
             String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().asciiCount == 0) {
@@ -773,12 +773,12 @@ class MoniValidator
         }
     }
 
-    private void validateHV(AlertData ad, Map<DeployedDOM, MoniTotals> expMap)
+    private void validateHV(AlertData ad, Map<DOMInfo, MoniTotals> expMap)
     {
         Map<String, Double> valueMap =
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
 
-        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+        for (Map.Entry<DOMInfo, MoniTotals> e : expMap.entrySet()) {
             String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().hardCount == 0) {
@@ -798,14 +798,14 @@ class MoniValidator
         }
     }
 
-    private void validateMPE(AlertData ad, Map<DeployedDOM, MoniTotals> expMap)
+    private void validateMPE(AlertData ad, Map<DOMInfo, MoniTotals> expMap)
     {
         Map<String, Double> rateMap =
             ad.getMap(MoniAnalysis.MONI_RATE_FIELD);
         Map<String, Double> errMap =
             ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
 
-        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+        for (Map.Entry<DOMInfo, MoniTotals> e : expMap.entrySet()) {
             String omID = e.getKey().getDeploymentLocation();
 
             assertTrue("Missing MPE rate for " + omID,
@@ -825,11 +825,11 @@ class MoniValidator
     }
 
     private void validatePower(AlertData ad,
-                               Map<DeployedDOM, MoniTotals> expMap)
+                               Map<DOMInfo, MoniTotals> expMap)
     {
         Map<String, Double> valueMap =
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
-        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+        for (Map.Entry<DOMInfo, MoniTotals> e : expMap.entrySet()) {
             String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().hardCount == 0) {
@@ -848,14 +848,14 @@ class MoniValidator
         }
     }
 
-    private void validateSPE(AlertData ad, Map<DeployedDOM, MoniTotals> expMap)
+    private void validateSPE(AlertData ad, Map<DOMInfo, MoniTotals> expMap)
     {
         Map<String, Double> rateMap =
             ad.getMap(MoniAnalysis.MONI_RATE_FIELD);
         Map<String, Double> errMap =
             ad.getMap(MoniAnalysis.MONI_ERROR_FIELD);
 
-        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+        for (Map.Entry<DOMInfo, MoniTotals> e : expMap.entrySet()) {
             String omID = e.getKey().getDeploymentLocation();
 
             assertTrue("Missing SPE rate for " + omID,
@@ -875,12 +875,12 @@ class MoniValidator
     }
 
     private void validateTemp(AlertData ad,
-                              Map<DeployedDOM, MoniTotals> expMap)
+                              Map<DOMInfo, MoniTotals> expMap)
     {
         Map<String, Double> valueMap =
             ad.getMap(MoniAnalysis.MONI_VALUE_FIELD);
 
-        for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+        for (Map.Entry<DOMInfo, MoniTotals> e : expMap.entrySet()) {
             String omID = e.getKey().getDeploymentLocation();
 
             if (e.getValue().hardCount == 0) {
@@ -902,11 +902,11 @@ class MoniValidator
     {
         final AlertData ad = alerter.get(nm, 0);
 
-        Map<DeployedDOM, MoniTotals> totalMap =
-            new HashMap<DeployedDOM, MoniTotals>();
+        Map<DOMInfo, MoniTotals> totalMap =
+            new HashMap<DOMInfo, MoniTotals>();
         for (int i = 0; i < allTotals.size(); i++) {
-            Map<DeployedDOM, MoniTotals> expMap = allTotals.get(i);
-            for (Map.Entry<DeployedDOM, MoniTotals> e : expMap.entrySet()) {
+            Map<DOMInfo, MoniTotals> expMap = allTotals.get(i);
+            for (Map.Entry<DOMInfo, MoniTotals> e : expMap.entrySet()) {
                 if (!totalMap.containsKey(e.getKey())) {
                     totalMap.put(e.getKey(), new MoniTotals());
                 }

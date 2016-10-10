@@ -18,7 +18,7 @@ import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerChangedEvent;
 import icecube.daq.splicer.SplicerListener;
 import icecube.daq.util.IDOMRegistry;
-import icecube.daq.util.DeployedDOM;
+import icecube.daq.util.DOMInfo;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -154,7 +154,7 @@ public class SBSplicedAnalysis
      * @return <tt>null</tt> if no DOM was found
      *         (or if no DOM registry has been set)
      */
-    DeployedDOM getDOM(long mbid)
+    DOMInfo getDOM(long mbid)
     {
         if (domRegistry == null) {
             if (!warnedDomRegistry) {
@@ -214,7 +214,7 @@ public class SBSplicedAnalysis
         if (payload instanceof Monitor) {
             Monitor mon = (Monitor) payload;
 
-            DeployedDOM dom = getDOM(mon.getDomId());
+            DOMInfo dom = getDOM(mon.getDomId());
             if (dom != null) {
                 return dom.isScintillator() || dom.isIceACT();
             }

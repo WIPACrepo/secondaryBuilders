@@ -11,7 +11,7 @@ import icecube.daq.payload.impl.ASCIIMonitor;
 import icecube.daq.payload.impl.HardwareMonitor;
 import icecube.daq.payload.impl.Monitor;
 import icecube.daq.payload.impl.UTCTime;
-import icecube.daq.util.DeployedDOM;
+import icecube.daq.util.DOMInfo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -151,7 +151,7 @@ public class MoniAnalysis
             return map.get(mbKey);
         }
 
-        DeployedDOM dom = getDOM(mbKey);
+        DOMInfo dom = getDOM(mbKey);
         if (dom == null) {
             return null;
         }
@@ -755,7 +755,7 @@ public class MoniAnalysis
      */
     private static class DOMValues
     {
-        DeployedDOM dom;
+        DOMInfo dom;
 
         ArrayList<Integer> speScalar = new ArrayList<Integer>();
         ArrayList<Integer> mpeScalar = new ArrayList<Integer>();
@@ -780,7 +780,7 @@ public class MoniAnalysis
         // OM ID generated from deployed DOM's major/minor values
         private String omId;
 
-        DOMValues(DeployedDOM dom)
+        DOMValues(DOMInfo dom)
         {
             this.dom = dom;
         }
