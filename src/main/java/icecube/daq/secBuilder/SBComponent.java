@@ -28,7 +28,8 @@ import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.SplicedAnalysis;
 import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerException;
-import icecube.daq.util.DOMRegistry;
+import icecube.daq.util.DOMRegistryException;
+import icecube.daq.util.DOMRegistryFactory;
 import icecube.daq.util.IDOMRegistry;
 
 import java.io.IOException;
@@ -55,7 +56,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 16198 2016-08-12 20:48:03Z dglo $
+ * @version $Id: SBComponent.java 16247 2016-10-11 14:26:24Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -342,15 +343,9 @@ public class SBComponent extends DAQComponent
 
         IDOMRegistry domRegistry;
         try {
-            domRegistry = DOMRegistry.loadRegistry(dirName);
-        } catch (ParserConfigurationException pce) {
-            LOG.error("Cannot load DOM registry", pce);
-            domRegistry = null;
-        } catch (SAXException se) {
-            LOG.error("Cannot load DOM registry", se);
-            domRegistry = null;
-        } catch (IOException ioe) {
-            LOG.error("Cannot load DOM registry", ioe);
+            domRegistry = DOMRegistryFactory.load(dirName);
+        } catch (DOMRegistryException dre) {
+            LOG.error("Cannot load DOM registry", dre);
             domRegistry = null;
         }
 
@@ -529,7 +524,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 16198 2016-08-12 20:48:03Z dglo $";
+        return "$Id: SBComponent.java 16247 2016-10-11 14:26:24Z dglo $";
     }
 
     /**
