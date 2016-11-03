@@ -1,5 +1,6 @@
 package icecube.daq.secBuilder;
 
+import icecube.daq.common.MockAppender;
 import icecube.daq.io.PayloadFileReader;
 import icecube.daq.juggler.alert.AlertException;
 import icecube.daq.juggler.alert.AlertQueue;
@@ -14,7 +15,6 @@ import icecube.daq.payload.impl.HardwareMonitor;
 import icecube.daq.payload.impl.Monitor;
 import icecube.daq.secBuilder.test.AlertData;
 import icecube.daq.secBuilder.test.MockAlerter;
-import icecube.daq.secBuilder.test.MockAppender;
 import icecube.daq.secBuilder.test.MockDOMRegistry;
 import icecube.daq.secBuilder.test.MockDispatcher;
 import icecube.daq.secBuilder.test.MockPayload;

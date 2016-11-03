@@ -1,9 +1,9 @@
 package icecube.daq.secBuilder;
 
-import java.io.File;
-
-import icecube.daq.secBuilder.test.MockAppender;
+import icecube.daq.common.MockAppender;
 import icecube.daq.secBuilder.test.MockDispatcher;
+
+import java.io.File;
 
 import org.apache.log4j.BasicConfigurator;
 
