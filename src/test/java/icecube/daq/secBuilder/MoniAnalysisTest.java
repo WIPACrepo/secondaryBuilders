@@ -338,8 +338,6 @@ public class MoniAnalysisTest
     public void setUp()
         throws Exception
     {
-        appender.clear();
-
         BasicConfigurator.resetConfiguration();
         BasicConfigurator.configure(appender);
 
@@ -351,17 +349,21 @@ public class MoniAnalysisTest
         throws Exception
     {
         if (appender.getNumberOfMessages() > 0) {
-            // ignore errors about missing HDF5 library
-            for (int i = 0; i < appender.getNumberOfMessages(); i++) {
-                final String msg = (String) appender.getMessage(i);
-                if (!msg.startsWith("Cannot find HDF library;") &&
-                    !msg.contains("was not moved to the dispatch storage") &&
-                    !msg.startsWith("Cannot create initial dataset prop") &&
-                    !msg.startsWith("Cannot create HDF writer"))
-                {
-                    fail("Unexpected log message " + i + ": " +
-                         appender.getMessage(i));
+            try {
+                // ignore errors about missing HDF5 library
+                for (int i = 0; i < appender.getNumberOfMessages(); i++) {
+                    final String msg = (String) appender.getMessage(i);
+                    if (!msg.startsWith("Cannot find HDF library;") &&
+                        !msg.contains("was not moved to the dispatch stor") &&
+                        !msg.startsWith("Cannot create initial dataset pr") &&
+                        !msg.startsWith("Cannot create HDF writer"))
+                    {
+                        fail("Unexpected log message " + i + ": " +
+                             appender.getMessage(i));
+                    }
                 }
+            } finally {
+                appender.clear();
             }
         }
 
