@@ -56,7 +56,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 16247 2016-10-11 14:26:24Z dglo $
+ * @version $Id: SBComponent.java 16632 2017-07-13 21:33:21Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -95,9 +95,6 @@ public class SBComponent extends DAQComponent
     }
 
     private static final Log LOG = LogFactory.getLog(SBComponent.class);
-
-    private static final boolean disableIceTopFastMoni =
-        !parseBoolean(System.getProperty("enableIceTopFastMoni", "true"));
 
     private static final boolean USE_PRIO_SPLICER =
         System.getProperty("usePrioritySplicer") != null;
@@ -265,10 +262,6 @@ public class SBComponent extends DAQComponent
             moniSplicedAnalysis = new MoniAnalysis(moniDispatcher);
             moniSplicer = createSplicer(moniSplicedAnalysis);
             addSplicer(moniSplicer);
-
-            if (disableIceTopFastMoni) {
-                moniSplicedAnalysis.disableIceTopFastMoni();
-            }
 
             moniSplicedAnalysis.setSplicer(moniSplicer);
             moniSplicedAnalysis.setStreamName("moni");
@@ -524,7 +517,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 16247 2016-10-11 14:26:24Z dglo $";
+        return "$Id: SBComponent.java 16632 2017-07-13 21:33:21Z dglo $";
     }
 
     /**

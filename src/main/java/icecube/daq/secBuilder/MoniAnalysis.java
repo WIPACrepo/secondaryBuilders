@@ -79,9 +79,6 @@ public class MoniAnalysis
     private HashMap<Long, DOMValues> domValues =
         new HashMap<Long, DOMValues>();
 
-    private FastMoniHDF fastMoni;
-    private boolean noJHDFLib;
-
     public MoniAnalysis(Dispatcher dispatcher)
     {
         super(dispatcher);
@@ -124,16 +121,6 @@ public class MoniAnalysis
     public static final double convertToVoltage(long total, int count)
     {
         return ((double) total / (double) count) / 2.0;
-    }
-
-    public boolean disableIceTopFastMoni()
-    {
-        if (fastMoni == null) {
-            return false;
-        }
-
-        noJHDFLib = true;
-        return true;
     }
 
     /**
@@ -185,15 +172,6 @@ public class MoniAnalysis
         }
 
         sendSummaryMonitorValues();
-
-        if (fastMoni != null) {
-            try {
-                fastMoni.close();
-            } catch (I3HDFException ex) {
-                LOG.error("Failed to close FastMoniHDF", ex);
-                fastMoni = null;
-            }
-        }
 
         binStartTime = NO_UTCTIME;
         binEndTime = NO_UTCTIME;
@@ -371,37 +349,6 @@ public class MoniAnalysis
                 synchronized (dval) {
                     dval.deadtimeTotal += deadtime;
                     dval.deadtimeCount++;
-                }
-
-                if (icetop) {
-                    if (fastMoni == null && !noJHDFLib) {
-                        try {
-                            fastMoni = new FastMoniHDF(getDispatcher(),
-                                                       getRunNumber());
-                        } catch (I3HDFException ex) {
-                            LOG.error("Cannot create HDF writer; IceTop" +
-                                      " monitoring values will not be written",
-                                      ex);
-                            noJHDFLib = true;
-                        } catch (UnsatisfiedLinkError ule) {
-                            LOG.error("Cannot find HDF library; IceTop" +
-                                      " monitoring values will not be written",
-                                      ule);
-                            noJHDFLib = true;
-                        }
-                    }
-
-                    if (fastMoni != null) {
-                        int[] data = new int[] {
-                            speCount, mpeCount, launches, deadtime
-                        };
-                        try {
-                            fastMoni.write(data);
-                        } catch (I3HDFException ex) {
-                            LOG.error("Cannot write IceTop FAST values for " +
-                                      dval.dom);
-                        }
-                    }
                 }
             }
         } else if (!(payload instanceof Monitor)) {
@@ -700,31 +647,6 @@ public class MoniAnalysis
         if (alertQueue != null && alertQueue.isStopped()) {
             alertQueue.start();
         }
-    }
-
-    /**
-     * Switch to a new run.
-     *
-     * @return number of events dispatched before the run was switched
-     *
-     * @param runNumber new run number
-     */
-    public long switchToNewRun(int runNumber)
-    {
-        // parent class switches dispatcher to new run
-        long rtnval = super.switchToNewRun(runNumber);
-
-        if (fastMoni != null) {
-            try {
-                fastMoni.switchToNewRun(runNumber);
-            } catch (I3HDFException ex) {
-                LOG.error("Cannot switch to new HDF5 file for run " +
-                          runNumber, ex);
-                fastMoni = null;
-            }
-        }
-
-        return rtnval;
     }
 
     /**
