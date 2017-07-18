@@ -22,6 +22,7 @@ import icecube.daq.secBuilder.test.MockSpliceableFactory;
 import icecube.daq.secBuilder.test.MockUTCTime;
 import icecube.daq.util.DOMInfo;
 import icecube.daq.util.IDOMRegistry;
+import icecube.daq.util.LocatePDAQ;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -342,12 +343,26 @@ public class MoniAnalysisTest
         BasicConfigurator.configure(appender);
 
         alerter = new MockAlerter();
+
+        // ensure LocatePDAQ uses the test version of the config directory
+        File configDir =
+            new File(getClass().getResource("/config").getPath());
+        if (!configDir.exists()) {
+            throw new IllegalArgumentException("Cannot find config" +
+                                               " directory under " +
+                                               getClass().getResource("/"));
+        }
+
+        System.setProperty(LocatePDAQ.CONFIG_DIR_PROPERTY,
+                           configDir.getAbsolutePath());
     }
 
     @After
     public void tearDown()
         throws Exception
     {
+        System.clearProperty(LocatePDAQ.CONFIG_DIR_PROPERTY);
+
         if (appender.getNumberOfMessages() > 0) {
             try {
                 // ignore errors about missing HDF5 library
