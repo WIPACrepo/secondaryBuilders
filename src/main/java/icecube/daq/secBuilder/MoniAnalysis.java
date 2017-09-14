@@ -256,7 +256,6 @@ public class MoniAnalysis
                     if (!dval.baseSet) {
                         // save base voltage
                         dval.baseValue = hvSet;
-                        dval.baseVoltage = convertToVoltage(hvSet, 1);
                         dval.baseSet = true;
                         dval.baseWarned = false;
                     } else if (dval.baseValue != hvSet && !dval.baseWarned) {
@@ -420,7 +419,7 @@ public class MoniAnalysis
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
-            double voltage, expected;
+            double voltage;
             synchronized (dv) {
                 if (dv.hvCount == 0) {
                     if (dv.hvTotal > 0) {
@@ -433,14 +432,14 @@ public class MoniAnalysis
                     continue;
                 }
 
-                expected = dv.baseVoltage;
-
                 voltage = convertToVoltage(dv.hvTotal, dv.hvCount);
+
+                // done with this bin, reset accumulator values
                 dv.hvTotal = 0;
                 dv.hvCount = 0;
-
             }
 
+            final double expected = convertToVoltage(dv.baseValue, 1);
             map.put(dv.getOmID(), voltage - expected);
         }
 
@@ -684,7 +683,6 @@ public class MoniAnalysis
 
         boolean baseSet;
         short baseValue;
-        double baseVoltage;
         boolean baseWarned;
 
         long hvTotal;
@@ -800,12 +798,12 @@ public class MoniAnalysis
 
         public String toString()
         {
-            return String.format("%s: spe %s mpe %s baseVoltage %.2f" +
+            return String.format("%s: spe %s mpe %s" +
                                  " hvTot %d hvCnt %d" +
                                  " 5VTot %d 5VCnt %d" +
                                  " deadTot %d deadCnt %d" +
                                  " mbTemp %.8f mbTempCnt %d",
-                                 getOmID(), speScalar, mpeScalar, baseVoltage,
+                                 getOmID(), speScalar, mpeScalar,
                                  hvTotal, hvCount, power5VTotal, power5VCount,
                                  deadtimeTotal, deadtimeCount, mbTempTotal,
                                  mbTempCount);
