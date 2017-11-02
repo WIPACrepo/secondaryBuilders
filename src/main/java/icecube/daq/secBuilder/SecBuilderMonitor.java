@@ -8,6 +8,7 @@ package icecube.daq.secBuilder;
 
 import icecube.daq.io.DAQComponentInputProcessor;
 import icecube.daq.io.Dispatcher;
+import icecube.daq.io.StreamMetaData;
 import icecube.daq.splicer.Splicer;
 
 public class SecBuilderMonitor implements SecBuilderMonitorMBean
@@ -44,37 +45,18 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
         this.dispatcher = dispatcher;
     }
 
-    /**
-     * Get the type of data (i.e. tcal, sn, moni)
-     * @return a String object
-     */
-    public String getDataType()
+    @Override
+    public long[] getEventData()
     {
-        return dataType;
-    }
-
-    /**
-     * Get the state of the input processor for the secondary builder
-     * @return a String object
-     */
-    public String getInputProcessorState()
-    {
-        return inputProcessor.getPresentState();
-    }
-
-    /**
-     * Get the state of the Splicer
-     * @return a String object
-     */
-    public String getSplicerState()
-    {
-        return splicer.getState().name();
+        StreamMetaData metadata = dispatcher.getMetaData();
+        return new long[] { metadata.getCount(), metadata.getTicks() };
     }
 
     /**
      * Get the number of Strands connected to the input channels
      * @return an int value
      */
+    @Override
     public int getStrandCount()
     {
         return splicer.getStrandCount();
@@ -84,6 +66,7 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
      * Get the amount of dispatched data for the current run
      * @return a long value
      */
+    @Override
     public long getNumDispatchedData()
     {
         return dispatcher.getNumDispatchedEvents();
@@ -93,6 +76,7 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
      * Get the total dispatched data since this component has started
      * @return a long value
      */
+    @Override
     public long getTotalDispatchedData()
     {
         return dispatcher.getTotalDispatchedEvents();
@@ -104,6 +88,7 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
      *
      * @return the number of units still available in the disk.
      */
+    @Override
     public long getDiskAvailable()
     {
         return dispatcher.getDiskAvailable();
@@ -115,6 +100,7 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
      *
      * @return the total number of units in the disk.
      */
+    @Override
     public long getDiskSize()
     {
         return dispatcher.getDiskSize();

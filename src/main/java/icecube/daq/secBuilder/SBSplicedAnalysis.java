@@ -8,6 +8,7 @@ package icecube.daq.secBuilder;
 
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
+import icecube.daq.io.StreamMetaData;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.impl.Monitor;
@@ -95,21 +96,9 @@ public class SBSplicedAnalysis
                 ByteBuffer buf  = payload.getPayloadBacking();
                 buf.limit(buf.getInt(0));
 
-                if (log.isDebugEnabled()) {
-                    int recl = buf.getInt(0);
-                    int limit = buf.limit();
-                    int capacity = buf.capacity();
-                    log.debug("Writing " +
-                              streamName + " byte buffer - RECL=" +
-                              recl + " LIMIT=" +
-                              limit + " CAP=" +
-                              capacity
-                              );
-                }
-
                 // write out the payload
                 try {
-                    dispatchEvent(buf);
+                    dispatchEvent(buf, payload.getUTCTime());
                 } catch (DispatchException de) {
                     if (log.isErrorEnabled() && !reportedError) {
                         log.error("couldn't dispatch the " + streamName +
@@ -228,16 +217,20 @@ public class SBSplicedAnalysis
      * (meaning it might not dispatch it).
      *
      * @param buffer the ByteBuffer containg the event.
+     * @param ticks DAQ time for this payload
+     *
      * @throws DispatchException is there is a problem in the Dispatch system.
      */
-    private void dispatchEvent(ByteBuffer buf) throws DispatchException
+    private void dispatchEvent(ByteBuffer buf, long ticks)
+        throws DispatchException
     {
 
         if (preScaling) {
             if (preScaleCount < preScale) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Discarding " + streamName + " prescaled event " +
-                        preScaleCount + " out of " + preScale);
+                    log.debug("Discarding " + streamName +
+                              " prescaled event " + preScaleCount +
+                              " out of " + preScale);
                 }
                 preScaleCount++;
                 return;
@@ -251,7 +244,7 @@ public class SBSplicedAnalysis
         }
 
         synchronized (dispatcher) {
-            dispatcher.dispatchEvent(buf);
+            dispatcher.dispatchEvent(buf, ticks);
         }
     }
 
@@ -299,6 +292,17 @@ public class SBSplicedAnalysis
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered FAILED state");
         }
+    }
+
+    /**
+     * Get the stream metadata (currently number of dispatched events and
+     * last dispatched time)
+     *
+     * @return metadata object
+     */
+    public StreamMetaData getMetaData()
+    {
+        return dispatcher.getMetaData();
     }
 
     /**
@@ -426,12 +430,12 @@ public class SBSplicedAnalysis
      *
      * @param runNumber new run number
      */
-    public long switchToNewRun(int runNumber) {
-        long numEvents = 0;
+    public StreamMetaData switchToNewRun(int runNumber) {
+        StreamMetaData metadata;
         try {
             synchronized (dispatcher) {
                 finishMonitoring();
-                numEvents = dispatcher.getNumDispatchedEvents();
+                metadata = dispatcher.getMetaData();
                 dispatcher.dataBoundary(Dispatcher.SWITCH_PREFIX + runNumber);
                 if (log.isInfoEnabled()) {
                     log.info("switched " + streamName + " to run " +
@@ -443,8 +447,9 @@ public class SBSplicedAnalysis
             if (log.isErrorEnabled()) {
                 log.error("failed to switch " + streamName, de);
             }
+            metadata = null;
         }
 
-        return numEvents;
+        return metadata;
     }
 }

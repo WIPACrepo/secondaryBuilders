@@ -2,6 +2,7 @@ package icecube.daq.secBuilder.test;
 
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
+import icecube.daq.io.StreamMetaData;
 import icecube.daq.payload.IByteBufferCache;
 import icecube.daq.payload.IEventPayload;
 import icecube.daq.payload.IWriteablePayload;
@@ -55,7 +56,7 @@ public class MockDispatcher
         }
     }
 
-    public void dispatchEvent(ByteBuffer buf)
+    public void dispatchEvent(ByteBuffer buf, long ticks)
         throws DispatchException
     {
         throw new Error("Unimplemented");
@@ -81,18 +82,6 @@ public class MockDispatcher
         }
     }
 
-    public void dispatchEvents(ByteBuffer buf, int[] il1)
-        throws DispatchException
-    {
-        throw new Error("Unimplemented");
-    }
-
-    public void dispatchEvents(ByteBuffer buf, int[] il1, int i2)
-        throws DispatchException
-    {
-        throw new Error("Unimplemented");
-    }
-
     public IByteBufferCache getByteBufferCache()
     {
         throw new Error("Unimplemented");
@@ -111,6 +100,16 @@ public class MockDispatcher
     public long getDiskSize()
     {
         return 0;
+    }
+
+    public long getFirstDispatchedTime()
+    {
+        return Long.MIN_VALUE;
+    }
+
+    public StreamMetaData getMetaData()
+    {
+        return new StreamMetaData(numSeen, 0L);
     }
 
     public long getNumBytesWritten()

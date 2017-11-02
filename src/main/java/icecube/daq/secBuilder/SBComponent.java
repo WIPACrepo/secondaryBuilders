@@ -11,6 +11,7 @@ import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
 import icecube.daq.io.SpliceablePayloadReader;
+import icecube.daq.io.StreamMetaData;
 import icecube.daq.juggler.component.DAQCompException;
 import icecube.daq.juggler.component.DAQCompServer;
 import icecube.daq.juggler.component.DAQComponent;
@@ -56,7 +57,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 16632 2017-07-13 21:33:21Z dglo $
+ * @version $Id: SBComponent.java 16807 2017-11-02 22:31:23Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -65,22 +66,29 @@ public class SBComponent extends DAQComponent
      */
     class SBRunData
     {
-        private long numTCal;
-        private long numSN;
-        private long numMoni;
+        private long tcalCount;
+        private long tcalTicks;
+        private long snCount;
+        private long snTicks;
+        private long moniCount;
+        private long moniTicks;
 
         /**
          * Create an object holding the event totals for a run.
          *
-         * @param numTCal - number of time calibration events dispatched
-         * @param numSN - number of supernova events dispatched
-         * @param numMoni - number of monitoring events dispatched
+         * @param tcalCount - number of time calibration events dispatched
+         * @param snCount - number of supernova events dispatched
+         * @param moniCount - number of monitoring events dispatched
          */
-        SBRunData(long numTCal, long numSN, long numMoni)
+        SBRunData(long tcalCount, long tcalTicks, long snCount, long snTicks,
+                  long moniCount, long moniTicks)
         {
-            this.numTCal = numTCal;
-            this.numSN = numSN;
-            this.numMoni = numMoni;
+            this.tcalCount = tcalCount;
+            this.tcalTicks = tcalTicks;
+            this.snCount = snCount;
+            this.snTicks = snTicks;
+            this.moniCount = moniCount;
+            this.moniTicks = moniTicks;
         }
 
         /**
@@ -90,7 +98,9 @@ public class SBComponent extends DAQComponent
          */
         public long[] toArray()
         {
-            return new long[] { numTCal, numSN, numMoni };
+            return new long[] {
+                tcalCount, tcalTicks, snCount, snTicks, moniCount, moniTicks,
+            };
         }
     }
 
@@ -517,7 +527,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 16632 2017-07-13 21:33:21Z dglo $";
+        return "$Id: SBComponent.java 16807 2017-11-02 22:31:23Z dglo $";
     }
 
     /**
@@ -549,13 +559,18 @@ public class SBComponent extends DAQComponent
     public void stopped()
     {
         moniSplicedAnalysis.finishMonitoring();
+        StreamMetaData moniMD = moniSplicedAnalysis.getMetaData();
+
         snSplicedAnalysis.finishMonitoring();
+        StreamMetaData snMD = snSplicedAnalysis.getMetaData();
+
         tcalSplicedAnalysis.finishMonitoring();
+        StreamMetaData tcalMD = tcalSplicedAnalysis.getMetaData();
 
         runData.put(runNumber,
-                    new SBRunData(tcalDispatcher.getNumDispatchedEvents(),
-                                  snDispatcher.getNumDispatchedEvents(),
-                                  moniDispatcher.getNumDispatchedEvents()));
+                    new SBRunData(tcalMD.getCount(), tcalMD.getTicks(),
+                                  snMD.getCount(), snMD.getTicks(),
+                                  moniMD.getCount(), moniMD.getTicks()));
     }
 
     /**
@@ -568,26 +583,34 @@ public class SBComponent extends DAQComponent
     public void switching(int runNumber)
         throws DAQCompException
     {
-        long numTCal = 0;
-        long numSN = 0;
-        long numMoni = 0;
+        StreamMetaData tcalMD;
+        StreamMetaData snMD;
+        StreamMetaData moniMD;
 
         if (LOG.isInfoEnabled()){
             LOG.info("Setting runNumber = " + runNumber);
         }
         if (isTcalEnabled) {
-            numTCal = tcalSplicedAnalysis.switchToNewRun(runNumber);
+            tcalMD = tcalSplicedAnalysis.switchToNewRun(runNumber);
+        } else {
+            tcalMD = new StreamMetaData(-1, -1);
         }
         if (isSnEnabled) {
-            numSN = snSplicedAnalysis.switchToNewRun(runNumber);
+            snMD = snSplicedAnalysis.switchToNewRun(runNumber);
+        } else {
+            snMD = new StreamMetaData(-1, -1);
         }
         if (isMoniEnabled) {
-            numMoni = moniSplicedAnalysis.switchToNewRun(runNumber);
+            moniMD = moniSplicedAnalysis.switchToNewRun(runNumber);
+        } else {
+            moniMD = new StreamMetaData(-1, -1);
         }
 
         // save run data for later retrieval
         runData.put(this.runNumber,
-                    new SBRunData(numTCal, numSN, numMoni));
+                    new SBRunData(tcalMD.getCount(), tcalMD.getTicks(),
+                                  snMD.getCount(), snMD.getTicks(),
+                                  moniMD.getCount(), moniMD.getTicks()));
 
         this.runNumber = runNumber;
     }
@@ -596,9 +619,12 @@ public class SBComponent extends DAQComponent
      * Get the run data for the specified run.
      *
      * @return array of <tt>long</tt> values:<ol>
-     *    <li>number of time calibration events
-     *    <li>number of supernova events
-     *    <li>number of monitoring events
+     *    <li>number of time calibration payloads
+     *    <li>time of last time calibration payload (in 0.1ns)
+     *    <li>number of supernova payloads
+     *    <li>time of last supernova payload (in 0.1ns)
+     *    <li>number of monitoring payloads
+     *    <li>time of last time calibration payload (in 0.1ns)
      *    </ol>
      */
     public long[] getRunData(int runNum)
