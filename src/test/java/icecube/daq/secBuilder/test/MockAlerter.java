@@ -8,6 +8,7 @@ import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class MockAlerter
     implements Alerter
@@ -94,6 +95,20 @@ public class MockAlerter
         }
 
         return list.get(index);
+    }
+
+    /**
+     * Get the names of all known alerts
+     *
+     * N.B. names are returned in an array in case the caller uses the names
+     * in a loop which calls "alerter.clear(name)" which will modify the
+     * Map's keyset causing a ConcurrentModificationException
+     *
+     * @return set of alert names
+     */
+    public String[] getNames()
+    {
+        return alerts.keySet().toArray(new String[0]);
     }
 
     /**

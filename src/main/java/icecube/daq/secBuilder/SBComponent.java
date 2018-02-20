@@ -20,6 +20,7 @@ import icecube.daq.juggler.mbean.MemoryStatistics;
 import icecube.daq.juggler.mbean.SystemStatistics;
 import icecube.daq.payload.impl.PayloadFactory;
 import icecube.daq.payload.IByteBufferCache;
+import icecube.daq.payload.impl.UTCTime;
 import icecube.daq.payload.impl.VitreousBufferCache;
 import icecube.daq.splicer.HKN1Splicer;
 import icecube.daq.splicer.PrioritySplicer;
@@ -57,7 +58,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 16807 2017-11-02 22:31:23Z dglo $
+ * @version $Id: SBComponent.java 16916 2018-02-20 19:10:42Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -527,7 +528,7 @@ public class SBComponent extends DAQComponent
      */
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 16807 2017-11-02 22:31:23Z dglo $";
+        return "$Id: SBComponent.java 16916 2018-02-20 19:10:42Z dglo $";
     }
 
     /**
@@ -555,16 +556,21 @@ public class SBComponent extends DAQComponent
 
     /**
      * Save final event counts.
+     *
+     * @param stopTime time when the component's stopped() method was called
+     *        (in DAQ ticks)
      */
     public void stopped()
     {
-        moniSplicedAnalysis.finishMonitoring();
+        final long stopTime = new UTCTime().longValue();
+
+        moniSplicedAnalysis.finishMonitoring(stopTime);
         StreamMetaData moniMD = moniSplicedAnalysis.getMetaData();
 
-        snSplicedAnalysis.finishMonitoring();
+        snSplicedAnalysis.finishMonitoring(stopTime);
         StreamMetaData snMD = snSplicedAnalysis.getMetaData();
 
-        tcalSplicedAnalysis.finishMonitoring();
+        tcalSplicedAnalysis.finishMonitoring(stopTime);
         StreamMetaData tcalMD = tcalSplicedAnalysis.getMetaData();
 
         runData.put(runNumber,
@@ -583,6 +589,8 @@ public class SBComponent extends DAQComponent
     public void switching(int runNumber)
         throws DAQCompException
     {
+        final long switchTime = new UTCTime().longValue();
+
         StreamMetaData tcalMD;
         StreamMetaData snMD;
         StreamMetaData moniMD;
@@ -591,17 +599,17 @@ public class SBComponent extends DAQComponent
             LOG.info("Setting runNumber = " + runNumber);
         }
         if (isTcalEnabled) {
-            tcalMD = tcalSplicedAnalysis.switchToNewRun(runNumber);
+            tcalMD = tcalSplicedAnalysis.switchToNewRun(runNumber, switchTime);
         } else {
             tcalMD = new StreamMetaData(-1, -1);
         }
         if (isSnEnabled) {
-            snMD = snSplicedAnalysis.switchToNewRun(runNumber);
+            snMD = snSplicedAnalysis.switchToNewRun(runNumber, switchTime);
         } else {
             snMD = new StreamMetaData(-1, -1);
         }
         if (isMoniEnabled) {
-            moniMD = moniSplicedAnalysis.switchToNewRun(runNumber);
+            moniMD = moniSplicedAnalysis.switchToNewRun(runNumber, switchTime);
         } else {
             moniMD = new StreamMetaData(-1, -1);
         }

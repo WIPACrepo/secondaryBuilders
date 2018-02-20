@@ -3,7 +3,7 @@ package icecube.daq.secBuilder;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.juggler.alert.Alerter;
 import icecube.daq.juggler.alert.AlertException;
-import icecube.daq.juggler.alert.AlertQueue;
+import icecube.daq.juggler.alert.IAlertQueue;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.PayloadFormatException;
@@ -24,6 +24,11 @@ import org.apache.commons.logging.LogFactory;
 public class MoniAnalysis
     extends SBSplicedAnalysis
 {
+    /** Start time for binned value(s) */
+    public static final String BIN_START_NAME = "recordingStartTime";
+    /** Stop time for binned value(s) */
+    public static final String BIN_STOP_NAME = "recordingStopTime";
+
     /** Deadtime message variable name */
     public static final String DEADTIME_MONI_NAME = "dom_deadtime";
     /** Deadtime message version number */
@@ -62,12 +67,13 @@ public class MoniAnalysis
     private static final Log LOG = LogFactory.getLog(MoniAnalysis.class);
 
     /** 10 minutes in 10ths of nanoseconds */
-    private static final long TEN_MINUTES = 10L * 60L * 10000000000L;
+    private static final long ONE_SECOND = 10000000000L;
+    private static final long TEN_MINUTES = 10L * 60L * ONE_SECOND;
 
     /** Special value to indicate there is no value for this time */
     private static final long NO_UTCTIME = Long.MIN_VALUE;
 
-    private AlertQueue alertQueue;
+    private IAlertQueue alertQueue;
     private boolean warnedQueueStopped;
 
     private long runStartTime = NO_UTCTIME;
@@ -151,21 +157,29 @@ public class MoniAnalysis
 
     /**
      * Send any cached monitoring data
+     *
+     * @param stopTime time when the component's stopped() or switching()
+     *                 method was called (in DAQ ticks)
      */
-    public void finishMonitoring()
+    public void finishMonitoring(long stopTime)
     {
         if (binStartTime == NO_UTCTIME || binEndTime == NO_UTCTIME) {
             LOG.error("Monitoring start/end time has not been set, not" +
                       " sending binned monitoring values");
         } else {
+            if (binEndTime > stopTime) {
+                stopTime = binEndTime;
+            }
+
             final String startTime = UTCTime.toDateString(binStartTime);
-            final String endTime = UTCTime.toDateString(binEndTime);
+            final String endTime = UTCTime.toDateString(stopTime);
 
             if (binEndTime < binStartTime) {
                 LOG.error("Final bin end time " + endTime +
                           " is earlier than start time " + startTime);
             } else {
-                sendBinnedMonitorValues(startTime, endTime);
+                final long binTicks = stopTime - binStartTime;
+                sendBinnedMonitorValues(startTime, endTime, binTicks);
             }
 
             runEndTime = binEndTime;
@@ -228,13 +242,14 @@ public class MoniAnalysis
         if (payload.getUTCTime() > nextStart) {
             // use old bin start/end times as time range
             final String startTime = UTCTime.toDateString(binStartTime);
-            final String endTime = UTCTime.toDateString(prevEnd);
+            final String endTime = UTCTime.toDateString(nextStart - 1);
 
             if (prevEnd < binStartTime) {
                 LOG.error("Bin end time " + endTime +
                           " is earlier than start time " + startTime);
             } else {
-                sendBinnedMonitorValues(startTime, endTime);
+                final long binTicks = nextStart - binStartTime;
+                sendBinnedMonitorValues(startTime, endTime, binTicks);
             }
 
             // set new bin start
@@ -397,8 +412,8 @@ public class MoniAnalysis
             msg.put("runNumber", getRunNumber());
 
             if (startTime != null && endTime != null) {
-                msg.put("recordingStartTime", startTime);
-                msg.put("recordingStopTime", endTime);
+                msg.put(BIN_START_NAME, startTime);
+                msg.put(BIN_STOP_NAME, endTime);
             }
 
             msg.put(MONI_VALUE_FIELD, map);
@@ -445,8 +460,8 @@ public class MoniAnalysis
 
         if (map.size() > 0) {
             HashMap msg = new HashMap();
-            msg.put("recordingStartTime", startTime);
-            msg.put("recordingStopTime", endTime);
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
             msg.put("version", HV_MONI_VERSION);
             msg.put("runNumber", getRunNumber());
             msg.put(MONI_VALUE_FIELD, map);
@@ -487,8 +502,8 @@ public class MoniAnalysis
 
         if (map.size() > 0) {
             HashMap msg = new HashMap();
-            msg.put("recordingStartTime", startTime);
-            msg.put("recordingStopTime", endTime);
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
             msg.put("version", MBTEMP_MONI_VERSION);
             msg.put("runNumber", getRunNumber());
             msg.put(MONI_VALUE_FIELD, map);
@@ -533,8 +548,8 @@ public class MoniAnalysis
             msg.put(MONI_VALUE_FIELD, map);
 
             if (startTime != null && endTime != null) {
-                msg.put("recordingStartTime", startTime);
-                msg.put("recordingStopTime", endTime);
+                msg.put(BIN_START_NAME, startTime);
+                msg.put(BIN_STOP_NAME, endTime);
             }
 
             sendMessage(POWER_MONI_NAME, msg);
@@ -547,26 +562,30 @@ public class MoniAnalysis
      * @param startTime starting date/time string
      * @param endTime ending date/time string
      */
-    private void sendSPEMPE(String startTime, String endTime)
+    private void sendSPEMPE(String startTime, String endTime, long binTicks)
     {
         HashMap<String, Double> speRate = new HashMap<String, Double>();
         HashMap<String, Double> speRateError = new HashMap<String, Double>();
         HashMap<String, Double> mpeRate = new HashMap<String, Double>();
         HashMap<String, Double> mpeRateError = new HashMap<String, Double>();
 
+        // skip rates with zero values if this is a partial bin at the
+        //  end of the run
+        final boolean skipZeros = binTicks < TEN_MINUTES / 2L;
+
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
             synchronized (dv) {
-                dv.putRateAndError(true, speRate, speRateError);
-                dv.putRateAndError(false, mpeRate, mpeRateError);
+                dv.putRateAndError(true, speRate, speRateError, skipZeros);
+                dv.putRateAndError(false, mpeRate, mpeRateError, skipZeros);
             }
         }
 
         if (speRate.size() > 0) {
             HashMap msg = new HashMap();
-            msg.put("recordingStartTime", startTime);
-            msg.put("recordingStopTime", endTime);
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
             msg.put("version", SPE_MPE_MONI_VERSION);
             msg.put("runNumber", getRunNumber());
             msg.put(MONI_RATE_FIELD, speRate);
@@ -576,8 +595,8 @@ public class MoniAnalysis
 
         if (mpeRate.size() > 0) {
             HashMap msg = new HashMap();
-            msg.put("recordingStartTime", startTime);
-            msg.put("recordingStopTime", endTime);
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
             msg.put("version", SPE_MPE_MONI_VERSION);
             msg.put("runNumber", getRunNumber());
             msg.put(MONI_RATE_FIELD, mpeRate);
@@ -592,9 +611,10 @@ public class MoniAnalysis
      * @param startTime starting date/time string
      * @param endTime ending date/time string
      */
-    private void sendBinnedMonitorValues(String startTime, String endTime)
+    private void sendBinnedMonitorValues(String startTime, String endTime,
+                                         long binTicks)
     {
-        sendSPEMPE(startTime, endTime);
+        sendSPEMPE(startTime, endTime, binTicks);
         sendHV(startTime, endTime);
         sendTemperature(startTime, endTime);
     }
@@ -635,7 +655,7 @@ public class MoniAnalysis
      *
      * @param newQueue new alert queue
      */
-    public void setAlertQueue(AlertQueue newQueue)
+    public void setAlertQueue(IAlertQueue newQueue)
     {
         if (alertQueue != null && !alertQueue.isStopped()) {
             alertQueue.stop();
@@ -766,9 +786,11 @@ public class MoniAnalysis
          * @param useSPE <tt>true</tt> if filling maps with SPE values
          * @param rate map holding rate values
          * @param rateError map holding error values
+         * @param skipZeros don't add zero rates to the list
          */
         void putRateAndError(boolean useSPE, HashMap<String, Double> rate,
-                             HashMap<String, Double> rateError)
+                             HashMap<String, Double> rateError,
+                             boolean skipZeros)
         {
             ArrayList<Integer> sv;
             if (useSPE) {
@@ -778,8 +800,10 @@ public class MoniAnalysis
             }
 
             if (sv.isEmpty()) {
-                rate.put(getOmID(), 0.0);
-                rateError.put(getOmID(), 0.0);
+                if (!skipZeros) {
+                    rate.put(getOmID(), 0.0);
+                    rateError.put(getOmID(), 0.0);
+                }
             } else {
                 long lsum = 0;
                 for (Integer val : sv) {

@@ -251,8 +251,11 @@ public class SBSplicedAnalysis
 
     /**
      * Send any cached monitoring data
+     *
+     * @param stopTime time when the component's stopped() method was called
+     *        (in DAQ ticks)
      */
-    public void finishMonitoring()
+    public void finishMonitoring(long stopTime)
     {
         // do nothing
     }
@@ -429,12 +432,15 @@ public class SBSplicedAnalysis
      * @return number of events dispatched before the run was switched
      *
      * @param runNumber new run number
+     *
+     * @param switchTime time when the component's switching() method was
+     *        called (in DAQ ticks)
      */
-    public StreamMetaData switchToNewRun(int runNumber) {
+    public StreamMetaData switchToNewRun(int runNumber, long switchTime) {
         StreamMetaData metadata;
         try {
             synchronized (dispatcher) {
-                finishMonitoring();
+                finishMonitoring(switchTime);
                 metadata = dispatcher.getMetaData();
                 dispatcher.dataBoundary(Dispatcher.SWITCH_PREFIX + runNumber);
                 if (log.isInfoEnabled()) {
