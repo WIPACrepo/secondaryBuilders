@@ -48,8 +48,9 @@ public class SecBuilderMonitor implements SecBuilderMonitorMBean
     @Override
     public long[] getEventData()
     {
+        int runNum = dispatcher.getRunNumber();
         StreamMetaData metadata = dispatcher.getMetaData();
-        return new long[] { metadata.getCount(), metadata.getTicks() };
+        return new long[] { runNum, metadata.getCount(), metadata.getTicks() };
     }
 
     /**
