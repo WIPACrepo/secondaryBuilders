@@ -161,6 +161,7 @@ public class MoniAnalysis
      * @param stopTime time when the component's stopped() or switching()
      *                 method was called (in DAQ ticks)
      */
+    @Override
     public void finishMonitoring(long stopTime)
     {
         if (binStartTime == NO_UTCTIME || binEndTime == NO_UTCTIME) {
@@ -197,6 +198,7 @@ public class MoniAnalysis
      *
      * @param payload payload
      */
+    @Override
     public void gatherMonitoring(IPayload payload)
         throws MoniException
     {
@@ -820,6 +822,7 @@ public class MoniAnalysis
             }
         }
 
+        @Override
         public String toString()
         {
             return String.format("%s: spe %s mpe %s" +

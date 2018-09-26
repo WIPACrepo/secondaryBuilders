@@ -58,7 +58,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 16916 2018-02-20 19:10:42Z dglo $
+ * @version $Id: SBComponent.java 17114 2018-09-26 09:51:56Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -174,6 +174,7 @@ public class SBComponent extends DAQComponent
         isMoniEnabled = compConfig.isMoniEnabled();
     }
 
+    @Override
     public void initialize()
         throws DAQCompException
     {
@@ -337,6 +338,7 @@ public class SBComponent extends DAQComponent
      *
      * @param dirName directory name
      */
+    @Override
     public void setGlobalConfigurationDir(String dirName)
     {
         if (LOG.isDebugEnabled()) {
@@ -366,6 +368,7 @@ public class SBComponent extends DAQComponent
      *
      * @throws DAQCompException if there is a problem configuring
      */
+    @Override
     public void configuring(String configName) throws DAQCompException
     {
         String runConfigFileName = configDirName + "/" + configName;
@@ -488,6 +491,7 @@ public class SBComponent extends DAQComponent
      * @param dirName The absolute path of directory where the dispatch
      * files will be stored.
      */
+    @Override
     public void setDispatchDestStorage(String dirName)
     {
         dispatchDir = dirName;
@@ -508,6 +512,7 @@ public class SBComponent extends DAQComponent
      *
      * @param maxFileSize the maximum size of the dispatch file.
      */
+    @Override
     public void setMaxFileSize(long maxFileSize)
     {
         if (isTcalEnabled) {
@@ -526,9 +531,10 @@ public class SBComponent extends DAQComponent
      *
      * @return svn version id as a String
      */
+    @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 16916 2018-02-20 19:10:42Z dglo $";
+        return "$Id: SBComponent.java 17114 2018-09-26 09:51:56Z dglo $";
     }
 
     /**
@@ -536,6 +542,7 @@ public class SBComponent extends DAQComponent
      *
      * @param runNumber run number
      */
+    @Override
     public void starting(int runNumber)
     {
         if (LOG.isInfoEnabled()) {
@@ -560,6 +567,7 @@ public class SBComponent extends DAQComponent
      * @param stopTime time when the component's stopped() method was called
      *        (in DAQ ticks)
      */
+    @Override
     public void stopped()
     {
         final long stopTime = new UTCTime().longValue();
@@ -586,6 +594,7 @@ public class SBComponent extends DAQComponent
      *
      * @throws DAQCompException if there is a problem switching the component
      */
+    @Override
     public void switching(int runNumber)
         throws DAQCompException
     {
@@ -635,6 +644,7 @@ public class SBComponent extends DAQComponent
      *    <li>time of last time calibration payload (in 0.1ns)
      *    </ol>
      */
+    @Override
     public long[] getRunData(int runNum)
         throws DAQCompException
     {
@@ -653,6 +663,7 @@ public class SBComponent extends DAQComponent
      *
      * @return current run number
      */
+    @Override
     public int getRunNumber()
     {
         return runNumber;

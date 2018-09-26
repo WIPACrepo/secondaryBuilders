@@ -43,6 +43,7 @@ public class MockAlerter
     /**
      * Close any open files/sockets.
      */
+    @Override
     public void close()
     {
         closed = true;
@@ -116,6 +117,7 @@ public class MockAlerter
      *
      * @return service name
      */
+    @Override
     public String getService()
     {
         return DEFAULT_SERVICE;
@@ -126,6 +128,7 @@ public class MockAlerter
      *
      * @return <tt>true</tt> if this alerter will send messages
      */
+    @Override
     public boolean isActive()
     {
         return !closed;
@@ -136,6 +139,7 @@ public class MockAlerter
      *
      * @param obj object to send
      */
+    @Override
     public void sendObject(Object obj)
         throws AlertException
     {
@@ -225,6 +229,7 @@ public class MockAlerter
         verbose = val;
     }
 
+    @Override
     public String toString()
     {
         return "MockAlerter[" + alerts.size() +" alerts(" +

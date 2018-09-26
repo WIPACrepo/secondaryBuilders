@@ -155,6 +155,7 @@ class MoniGenerator
         this.maxItems = maxItems;
     }
 
+    @Override
     public boolean hasNext()
     {
         return nextItem < maxItems;
@@ -221,6 +222,7 @@ class MoniGenerator
         }
     }
 
+    @Override
     public void remove()
     {
         throw new Error("Unimplemented");
@@ -1123,6 +1125,7 @@ class MoniValidator
             }
         }
 
+        @Override
         public String toString()
         {
             final double cvtVolt = ((2048.0 / 4095.0) * (5.2 / 2.0)) /
@@ -1151,11 +1154,13 @@ class MockMoniPayload
      * Unimplemented
      * @return Error
      */
+    @Override
     public int getPayloadInterfaceType()
     {
         throw new Error("Unimplemented");
     }
 
+    @Override
     public IUTCTime getPayloadTimeUTC()
     {
         if (utcObj == null && utcTime != Long.MIN_VALUE) {
@@ -1165,11 +1170,13 @@ class MockMoniPayload
         return utcObj;
     }
 
+    @Override
     public long getUTCTime()
     {
         return utcTime;
     }
 
+    @Override
     public int hashCode()
     {
         return 123;

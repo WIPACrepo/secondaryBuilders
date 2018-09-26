@@ -70,6 +70,7 @@ public class SBSplicedAnalysis
      *
      * @param splicedObjects a List of Spliceable objects.
      */
+    @Override
     public void analyze(List<Spliceable> splicedObjects)
     {
         for (Spliceable spl : splicedObjects) {
@@ -277,6 +278,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void disposed(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
@@ -290,6 +292,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void failed(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
@@ -324,6 +327,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void starting(SplicerChangedEvent<Spliceable> event)
     {
         try {
@@ -347,6 +351,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void started(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
@@ -360,6 +365,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void stopped(SplicerChangedEvent<Spliceable> event)
     {
         try {
@@ -387,6 +393,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void stopping(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {

@@ -31,6 +31,7 @@ public class AlertData
 
     public Map<String, Object> getValues() { return values; }
 
+    @Override
     public String toString()
     {
         return "AlertData[name=" + varname + ",prio=" + priority +
