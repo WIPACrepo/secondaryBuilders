@@ -72,24 +72,14 @@ public class SecBuilderCompConfig implements SBCompConfig
         return granularity;
     }
 
-    public long getMaxCacheBytes()
-    {
-        return maxCacheByte;
-    }
-
     public long getMaxAcquireBytes()
     {
         return maxAcquireBytes;
     }
 
-    public boolean isTcalEnabled()
+    public long getMaxCacheBytes()
     {
-        return isTcalEnabled;
-    }
-
-    public boolean isSnEnabled()
-    {
-        return isSnEnabled;
+        return maxCacheByte;
     }
 
     public boolean isMoniEnabled()
@@ -100,5 +90,15 @@ public class SecBuilderCompConfig implements SBCompConfig
     public boolean isMonitoring()
     {
         return isMonitoring;
+    }
+
+    public boolean isSnEnabled()
+    {
+        return isSnEnabled;
+    }
+
+    public boolean isTcalEnabled()
+    {
+        return isTcalEnabled;
     }
 }

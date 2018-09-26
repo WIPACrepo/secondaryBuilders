@@ -1156,11 +1156,6 @@ class MockMoniPayload
         throw new Error("Unimplemented");
     }
 
-    public int hashCode()
-    {
-        return 123;
-    }
-
     public IUTCTime getPayloadTimeUTC()
     {
         if (utcObj == null && utcTime != Long.MIN_VALUE) {
@@ -1173,5 +1168,10 @@ class MockMoniPayload
     public long getUTCTime()
     {
         return utcTime;
+    }
+
+    public int hashCode()
+    {
+        return 123;
     }
 }

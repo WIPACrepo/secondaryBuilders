@@ -87,11 +87,6 @@ public class MockDispatcher
         throw new Error("Unimplemented");
     }
 
-    public File getDispatchDestStorage()
-    {
-        return dispatchDir;
-    }
-
     public long getDiskAvailable()
     {
         return 0;
@@ -100,6 +95,11 @@ public class MockDispatcher
     public long getDiskSize()
     {
         return 0;
+    }
+
+    public File getDispatchDestStorage()
+    {
+        return dispatchDir;
     }
 
     public long getFirstDispatchedTime()

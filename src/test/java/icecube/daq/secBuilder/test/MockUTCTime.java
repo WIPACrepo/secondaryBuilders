@@ -66,11 +66,6 @@ public class MockUTCTime
         return new MockUTCTime(-1);
     }
 
-    public long longValue()
-    {
-        return time;
-    }
-
     public int hashCode()
     {
         final long modValue = Integer.MAX_VALUE / 256;
@@ -79,6 +74,11 @@ public class MockUTCTime
 
         return (int) (topTwo / modValue) + (int) (topTwo % modValue) +
             (int) (time % modValue);
+    }
+
+    public long longValue()
+    {
+        return time;
     }
 
     /**
