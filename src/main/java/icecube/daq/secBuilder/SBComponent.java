@@ -10,7 +10,7 @@ package icecube.daq.secBuilder;
 import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
-import icecube.daq.io.SpliceablePayloadReader;
+import icecube.daq.io.SpliceableStreamReader;
 import icecube.daq.io.StreamMetaData;
 import icecube.daq.juggler.component.DAQCompException;
 import icecube.daq.juggler.component.DAQCompServer;
@@ -58,7 +58,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 17114 2018-09-26 09:51:56Z dglo $
+ * @version $Id: SBComponent.java 17123 2018-10-01 22:09:41Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -142,9 +142,9 @@ public class SBComponent extends DAQComponent
     private SecBuilderMonitor snBuilderMonitor;
     private SecBuilderMonitor moniBuilderMonitor;
 
-    private SpliceablePayloadReader tcalInputEngine;
-    private SpliceablePayloadReader snInputEngine;
-    private SpliceablePayloadReader moniInputEngine;
+    private SpliceableStreamReader tcalInputEngine;
+    private SpliceableStreamReader snInputEngine;
+    private SpliceableStreamReader moniInputEngine;
 
     private boolean isMonitoring;
     private boolean isTcalEnabled;
@@ -200,7 +200,7 @@ public class SBComponent extends DAQComponent
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
             tcalSplicedAnalysis.setStreamName("tcal");
             try {
-                tcalInputEngine = new SpliceablePayloadReader(
+                tcalInputEngine = new SpliceableStreamReader(
                     "tcalInputEngine", 50000, tcalSplicer, tcalFactory);
                 addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA,
                     tcalInputEngine);
@@ -240,7 +240,7 @@ public class SBComponent extends DAQComponent
             snSplicedAnalysis.setSplicer(snSplicer);
             snSplicedAnalysis.setStreamName("sn");
             try {
-                snInputEngine = new SpliceablePayloadReader("stringHubSnInput",
+                snInputEngine = new SpliceableStreamReader("stringHubSnInput",
                     25000, snSplicer, snFactory);
                 addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
 
@@ -278,7 +278,7 @@ public class SBComponent extends DAQComponent
             moniSplicedAnalysis.setSplicer(moniSplicer);
             moniSplicedAnalysis.setStreamName("moni");
             try {
-                moniInputEngine = new SpliceablePayloadReader(
+                moniInputEngine = new SpliceableStreamReader(
                     "stringHubMoniInput", 5000, moniSplicer, moniFactory);
                 addMonitoredEngine(DAQConnector.TYPE_MONI_DATA,
                     moniInputEngine);
@@ -534,7 +534,7 @@ public class SBComponent extends DAQComponent
     @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 17114 2018-09-26 09:51:56Z dglo $";
+        return "$Id: SBComponent.java 17123 2018-10-01 22:09:41Z dglo $";
     }
 
     /**
