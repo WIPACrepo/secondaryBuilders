@@ -24,8 +24,7 @@ import icecube.daq.util.DOMInfo;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 /**
  * This is the the SplicedAnalysis that can be used with
@@ -53,7 +52,7 @@ public class SBSplicedAnalysis
     private long preScale = 1;
     private long preScaleCount = 1;
 
-    private Log log = LogFactory.getLog(SBSplicedAnalysis.class);
+    private Logger log = Logger.getLogger(SBSplicedAnalysis.class);
 
     public SBSplicedAnalysis(Dispatcher dispatcher)
     {
@@ -101,7 +100,7 @@ public class SBSplicedAnalysis
                 try {
                     dispatchEvent(buf, payload.getUTCTime());
                 } catch (DispatchException de) {
-                    if (log.isErrorEnabled() && !reportedError) {
+                    if (!reportedError) {
                         log.error("couldn't dispatch the " + streamName +
                                   " payload: ", de);
                         reportedError = true;
@@ -338,10 +337,8 @@ public class SBSplicedAnalysis
                     " starting state and calling dispatcher.dataBoundary()");
             }
         } catch (DispatchException de) {
-            if (log.isErrorEnabled()) {
-                log.error("failed on " + streamName +
-                    " dispatcher.dataBoundary(): ", de);
-            }
+            log.error("failed on " + streamName +
+                      " dispatcher.dataBoundary(): ", de);
         }
     }
 
@@ -375,10 +372,8 @@ public class SBSplicedAnalysis
                     " stopped state and calling dispatcher.dataBoundary()");
             }
         } catch (DispatchException de) {
-            if (log.isErrorEnabled()) {
-                log.error("failed on " + streamName +
-                    " dispatcher.dataBoundary(): ", de);
-            }
+            log.error("failed on " + streamName +
+                " dispatcher.dataBoundary(): ", de);
         }
         // tell manager that we have stopped
         if (log.isInfoEnabled()) {
@@ -457,9 +452,7 @@ public class SBSplicedAnalysis
                 this.runNumber = runNumber;
             }
         } catch (DispatchException de) {
-            if (log.isErrorEnabled()) {
-                log.error("failed to switch " + streamName, de);
-            }
+            log.error("failed to switch " + streamName, de);
             metadata = null;
         }
 

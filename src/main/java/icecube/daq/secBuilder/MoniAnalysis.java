@@ -18,8 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 public class MoniAnalysis
     extends SBSplicedAnalysis
@@ -64,7 +63,7 @@ public class MoniAnalysis
     public static final String MONI_VALUE_FIELD = "value";
 
     /** Logger */
-    private static final Log LOG = LogFactory.getLog(MoniAnalysis.class);
+    private static final Logger LOG = Logger.getLogger(MoniAnalysis.class);
 
     /** 10 minutes in 10ths of nanoseconds */
     private static final long ONE_SECOND = 10000000000L;
