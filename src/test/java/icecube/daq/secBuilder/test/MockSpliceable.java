@@ -18,6 +18,7 @@ public class MockSpliceable
         this.bBuf = bBuf;
     }
 
+    @Override
     public int compareSpliceable(Spliceable spl)
     {
         if (spl == null) {

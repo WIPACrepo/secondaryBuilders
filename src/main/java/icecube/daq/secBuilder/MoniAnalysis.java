@@ -3,16 +3,15 @@ package icecube.daq.secBuilder;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.juggler.alert.Alerter;
 import icecube.daq.juggler.alert.AlertException;
-import icecube.daq.juggler.alert.AlertQueue;
+import icecube.daq.juggler.alert.IAlertQueue;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
-import icecube.daq.payload.IUTCTime;
 import icecube.daq.payload.PayloadFormatException;
 import icecube.daq.payload.impl.ASCIIMonitor;
 import icecube.daq.payload.impl.HardwareMonitor;
 import icecube.daq.payload.impl.Monitor;
 import icecube.daq.payload.impl.UTCTime;
-import icecube.daq.util.DeployedDOM;
+import icecube.daq.util.DOMInfo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +24,11 @@ import org.apache.commons.logging.LogFactory;
 public class MoniAnalysis
     extends SBSplicedAnalysis
 {
+    /** Start time for binned value(s) */
+    public static final String BIN_START_NAME = "recordingStartTime";
+    /** Stop time for binned value(s) */
+    public static final String BIN_STOP_NAME = "recordingStopTime";
+
     /** Deadtime message variable name */
     public static final String DEADTIME_MONI_NAME = "dom_deadtime";
     /** Deadtime message version number */
@@ -39,6 +43,11 @@ public class MoniAnalysis
     public static final String POWER_MONI_NAME = "dom_mainboard_power_rail";
     /** Power supply voltage message version number */
     public static final int POWER_MONI_VERSION = 0;
+
+    /** Mainboard temperature message variable name */
+    public static final String MBTEMP_MONI_NAME = "dom_temperature";
+    /** Mainboard temperature message version number */
+    public static final int MBTEMP_MONI_VERSION = 0;
 
     /** SPE monitoring message variable name */
     public static final String SPE_MONI_NAME = "dom_spe_moni_rate";
@@ -58,24 +67,23 @@ public class MoniAnalysis
     private static final Log LOG = LogFactory.getLog(MoniAnalysis.class);
 
     /** 10 minutes in 10ths of nanoseconds */
-    private static final long TEN_MINUTES = 10L * 60L * 10000000000L;
+    private static final long ONE_SECOND = 10000000000L;
+    private static final long TEN_MINUTES = 10L * 60L * ONE_SECOND;
 
     /** Special value to indicate there is no value for this time */
     private static final long NO_UTCTIME = Long.MIN_VALUE;
 
-    private AlertQueue alertQueue;
+    private IAlertQueue alertQueue;
     private boolean warnedQueueStopped;
+
+    private long runStartTime = NO_UTCTIME;
+    private long runEndTime = NO_UTCTIME;
 
     private long binStartTime = NO_UTCTIME;
     private long binEndTime = NO_UTCTIME;
 
     private HashMap<Long, DOMValues> domValues =
         new HashMap<Long, DOMValues>();
-
-    private boolean sentHVSet;
-
-    private FastMoniHDF fastMoni;
-    private boolean noJHDFLib;
 
     public MoniAnalysis(Dispatcher dispatcher)
     {
@@ -121,16 +129,6 @@ public class MoniAnalysis
         return ((double) total / (double) count) / 2.0;
     }
 
-    public boolean disableIceTopFastMoni()
-    {
-        if (fastMoni == null) {
-            return false;
-        }
-
-        noJHDFLib = true;
-        return true;
-    }
-
     /**
      * Find the DOM values for the specified mainboard ID
      *
@@ -146,7 +144,7 @@ public class MoniAnalysis
             return map.get(mbKey);
         }
 
-        DeployedDOM dom = getDOM(mbKey);
+        DOMInfo dom = getDOM(mbKey);
         if (dom == null) {
             return null;
         }
@@ -159,34 +157,36 @@ public class MoniAnalysis
 
     /**
      * Send any cached monitoring data
+     *
+     * @param stopTime time when the component's stopped() or switching()
+     *                 method was called (in DAQ ticks)
      */
-    public void finishMonitoring()
+    @Override
+    public void finishMonitoring(long stopTime)
     {
         if (binStartTime == NO_UTCTIME || binEndTime == NO_UTCTIME) {
             LOG.error("Monitoring start/end time has not been set, not" +
                       " sending binned monitoring values");
         } else {
+            if (binEndTime > stopTime) {
+                stopTime = binEndTime;
+            }
+
             final String startTime = UTCTime.toDateString(binStartTime);
-            final String endTime = UTCTime.toDateString(binEndTime);
+            final String endTime = UTCTime.toDateString(stopTime);
 
             if (binEndTime < binStartTime) {
                 LOG.error("Final bin end time " + endTime +
                           " is earlier than start time " + startTime);
             } else {
-                sendBinnedMonitorValues(startTime, endTime);
+                final long binTicks = stopTime - binStartTime;
+                sendBinnedMonitorValues(startTime, endTime, binTicks);
             }
+
+            runEndTime = binEndTime;
         }
 
         sendSummaryMonitorValues();
-
-        if (fastMoni != null) {
-            try {
-                fastMoni.close();
-            } catch (I3HDFException ex) {
-                LOG.error("Failed to close FastMoniHDF", ex);
-                fastMoni = null;
-            }
-        }
 
         binStartTime = NO_UTCTIME;
         binEndTime = NO_UTCTIME;
@@ -198,6 +198,7 @@ public class MoniAnalysis
      *
      * @param payload payload
      */
+    @Override
     public void gatherMonitoring(IPayload payload)
         throws MoniException
     {
@@ -230,6 +231,9 @@ public class MoniAnalysis
         // if this is the first value, set the binning start time
         if (binStartTime == NO_UTCTIME) {
             binStartTime = payload.getUTCTime();
+            if (runStartTime == NO_UTCTIME) {
+                runStartTime = binStartTime;
+            }
         }
 
         // save previous end time, set current end time
@@ -240,13 +244,14 @@ public class MoniAnalysis
         if (payload.getUTCTime() > nextStart) {
             // use old bin start/end times as time range
             final String startTime = UTCTime.toDateString(binStartTime);
-            final String endTime = UTCTime.toDateString(prevEnd);
+            final String endTime = UTCTime.toDateString(nextStart - 1);
 
             if (prevEnd < binStartTime) {
                 LOG.error("Bin end time " + endTime +
                           " is earlier than start time " + startTime);
             } else {
-                sendBinnedMonitorValues(startTime, endTime);
+                final long binTicks = nextStart - binStartTime;
+                sendBinnedMonitorValues(startTime, endTime, binTicks);
             }
 
             // set new bin start
@@ -268,7 +273,6 @@ public class MoniAnalysis
                     if (!dval.baseSet) {
                         // save base voltage
                         dval.baseValue = hvSet;
-                        dval.baseVoltage = convertToVoltage(hvSet, 1);
                         dval.baseSet = true;
                         dval.baseWarned = false;
                     } else if (dval.baseValue != hvSet && !dval.baseWarned) {
@@ -287,6 +291,10 @@ public class MoniAnalysis
 
                     dval.power5VTotal += mon.getADC5VPowerSupply();
                     dval.power5VCount++;
+
+                    dval.mbTempTotal +=
+                        translateTemperature(mon.getMBTemperature());
+                    dval.mbTempCount++;
                 }
             }
         } else if (payload instanceof ASCIIMonitor) {
@@ -358,37 +366,6 @@ public class MoniAnalysis
                     dval.deadtimeTotal += deadtime;
                     dval.deadtimeCount++;
                 }
-
-                if (icetop) {
-                    if (fastMoni == null && !noJHDFLib) {
-                        try {
-                            fastMoni = new FastMoniHDF(getDispatcher(),
-                                                       getRunNumber());
-                        } catch (I3HDFException ex) {
-                            LOG.error("Cannot create HDF writer; IceTop" +
-                                      " monitoring values will not be written",
-                                      ex);
-                            noJHDFLib = true;
-                        } catch (UnsatisfiedLinkError ule) {
-                            LOG.error("Cannot find HDF library; IceTop" +
-                                      " monitoring values will not be written",
-                                      ule);
-                            noJHDFLib = true;
-                        }
-                    }
-
-                    if (fastMoni != null) {
-                        int[] data = new int[] {
-                            speCount, mpeCount, launches, deadtime
-                        };
-                        try {
-                            fastMoni.write(data);
-                        } catch (I3HDFException ex) {
-                            LOG.error("Cannot write IceTop FAST values for " +
-                                      dval.dom);
-                        }
-                    }
-                }
             }
         } else if (!(payload instanceof Monitor)) {
             throw new MoniException("Saw non-Monitor payload " + payload);
@@ -398,7 +375,7 @@ public class MoniAnalysis
     /**
      * Send average deadtime
      */
-    private void sendDeadtime()
+    private void sendDeadtime(String startTime, String endTime)
     {
         HashMap<String, Double> map = new HashMap<String, Double>();
 
@@ -432,11 +409,17 @@ public class MoniAnalysis
         }
 
         if (map.size() > 0) {
-            HashMap valueMap = new HashMap();
-            valueMap.put("version", DEADTIME_MONI_VERSION);
-            valueMap.put("runNumber", getRunNumber());
-            valueMap.put(MONI_VALUE_FIELD, map);
-            sendMessage(DEADTIME_MONI_NAME, valueMap);
+            HashMap msg = new HashMap();
+            msg.put("version", DEADTIME_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+
+            if (startTime != null && endTime != null) {
+                msg.put(BIN_START_NAME, startTime);
+                msg.put(BIN_STOP_NAME, endTime);
+            }
+
+            msg.put(MONI_VALUE_FIELD, map);
+            sendMessage(DEADTIME_MONI_NAME, msg);
         }
     }
 
@@ -448,12 +431,12 @@ public class MoniAnalysis
      */
     private void sendHV(String startTime, String endTime)
     {
-        HashMap<String, Double> diffMap = new HashMap<String, Double>();
+        HashMap<String, Double> map = new HashMap<String, Double>();
 
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
-            double voltage, expected;
+            double voltage;
             synchronized (dv) {
                 if (dv.hvCount == 0) {
                     if (dv.hvTotal > 0) {
@@ -466,32 +449,74 @@ public class MoniAnalysis
                     continue;
                 }
 
-                expected = dv.baseVoltage;
-
                 voltage = convertToVoltage(dv.hvTotal, dv.hvCount);
+
+                // done with this bin, reset accumulator values
                 dv.hvTotal = 0;
                 dv.hvCount = 0;
-
             }
 
-            diffMap.put(dv.getOmID(), voltage - expected);
+            final double expected = convertToVoltage(dv.baseValue, 1);
+            map.put(dv.getOmID(), voltage - expected);
         }
 
-        if (diffMap.size() > 0) {
-            HashMap hvMsg = new HashMap();
-            hvMsg.put("recordingStartTime", startTime);
-            hvMsg.put("recordingStopTime", endTime);
-            hvMsg.put("version", HV_MONI_VERSION);
-            hvMsg.put("runNumber", getRunNumber());
-            hvMsg.put(MONI_VALUE_FIELD, diffMap);
-            sendMessage(HVDIFF_MONI_NAME, hvMsg);
+        if (map.size() > 0) {
+            HashMap msg = new HashMap();
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
+            msg.put("version", HV_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_VALUE_FIELD, map);
+            sendMessage(HVDIFF_MONI_NAME, msg);
+        }
+    }
+
+    /**
+     * Send average mainboard temperature
+     */
+    private void sendTemperature(String startTime, String endTime)
+    {
+        HashMap<String, Double> map = new HashMap<String, Double>();
+
+        for (Long mbKey : domValues.keySet()) {
+            DOMValues dv = domValues.get(mbKey);
+
+            double avg;
+            synchronized (dv) {
+                if (dv.mbTempCount == 0) {
+                    if (dv.mbTempTotal > 0.0) {
+                        LOG.error("Found MB temperature " + dv.mbTempTotal +
+                                  " total with 0 count for " + dv.getOmID());
+                        dv.mbTempTotal = 0.0;
+                    }
+
+                    // skip DOM if there were no reported values
+                    continue;
+                }
+
+                avg = dv.mbTempTotal / (double) dv.mbTempCount;
+                dv.mbTempTotal = 0.0;
+                dv.mbTempCount = 0;
+            }
+
+            map.put(dv.getOmID(), avg);
+        }
+
+        if (map.size() > 0) {
+            HashMap msg = new HashMap();
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
+            msg.put("version", MBTEMP_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_VALUE_FIELD, map);
+            sendMessage(MBTEMP_MONI_NAME, msg);
         }
     }
 
     /**
      * Send average Power Supply voltage
      */
-    private void sendPower()
+    private void sendPower(String startTime, String endTime)
     {
         HashMap<String, Double> map = new HashMap<String, Double>();
 
@@ -519,11 +544,17 @@ public class MoniAnalysis
         }
 
         if (map.size() > 0) {
-            HashMap valueMap = new HashMap();
-            valueMap.put("version", POWER_MONI_VERSION);
-            valueMap.put("runNumber", getRunNumber());
-            valueMap.put(MONI_VALUE_FIELD, map);
-            sendMessage(POWER_MONI_NAME, valueMap);
+            HashMap msg = new HashMap();
+            msg.put("version", POWER_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_VALUE_FIELD, map);
+
+            if (startTime != null && endTime != null) {
+                msg.put(BIN_START_NAME, startTime);
+                msg.put(BIN_STOP_NAME, endTime);
+            }
+
+            sendMessage(POWER_MONI_NAME, msg);
         }
     }
 
@@ -533,42 +564,46 @@ public class MoniAnalysis
      * @param startTime starting date/time string
      * @param endTime ending date/time string
      */
-    private void sendSPEMPE(String startTime, String endTime)
+    private void sendSPEMPE(String startTime, String endTime, long binTicks)
     {
         HashMap<String, Double> speRate = new HashMap<String, Double>();
         HashMap<String, Double> speRateError = new HashMap<String, Double>();
         HashMap<String, Double> mpeRate = new HashMap<String, Double>();
         HashMap<String, Double> mpeRateError = new HashMap<String, Double>();
 
+        // skip rates with zero values if this is a partial bin at the
+        //  end of the run
+        final boolean skipZeros = binTicks < TEN_MINUTES / 2L;
+
         for (Long mbKey : domValues.keySet()) {
             DOMValues dv = domValues.get(mbKey);
 
             synchronized (dv) {
-                dv.putRateAndError(true, speRate, speRateError);
-                dv.putRateAndError(false, mpeRate, mpeRateError);
+                dv.putRateAndError(true, speRate, speRateError, skipZeros);
+                dv.putRateAndError(false, mpeRate, mpeRateError, skipZeros);
             }
         }
 
         if (speRate.size() > 0) {
-            HashMap speMsg = new HashMap();
-            speMsg.put("recordingStartTime", startTime);
-            speMsg.put("recordingStopTime", endTime);
-            speMsg.put("version", SPE_MPE_MONI_VERSION);
-            speMsg.put("runNumber", getRunNumber());
-            speMsg.put(MONI_RATE_FIELD, speRate);
-            speMsg.put(MONI_ERROR_FIELD, speRateError);
-            sendMessage(SPE_MONI_NAME, speMsg);
+            HashMap msg = new HashMap();
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
+            msg.put("version", SPE_MPE_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_RATE_FIELD, speRate);
+            msg.put(MONI_ERROR_FIELD, speRateError);
+            sendMessage(SPE_MONI_NAME, msg);
         }
 
         if (mpeRate.size() > 0) {
-            HashMap mpeMsg = new HashMap();
-            mpeMsg.put("recordingStartTime", startTime);
-            mpeMsg.put("recordingStopTime", endTime);
-            mpeMsg.put("version", SPE_MPE_MONI_VERSION);
-            mpeMsg.put("runNumber", getRunNumber());
-            mpeMsg.put(MONI_RATE_FIELD, mpeRate);
-            mpeMsg.put(MONI_ERROR_FIELD, mpeRateError);
-            sendMessage(MPE_MONI_NAME, mpeMsg);
+            HashMap msg = new HashMap();
+            msg.put(BIN_START_NAME, startTime);
+            msg.put(BIN_STOP_NAME, endTime);
+            msg.put("version", SPE_MPE_MONI_VERSION);
+            msg.put("runNumber", getRunNumber());
+            msg.put(MONI_RATE_FIELD, mpeRate);
+            msg.put(MONI_ERROR_FIELD, mpeRateError);
+            sendMessage(MPE_MONI_NAME, msg);
         }
     }
 
@@ -578,10 +613,12 @@ public class MoniAnalysis
      * @param startTime starting date/time string
      * @param endTime ending date/time string
      */
-    private void sendBinnedMonitorValues(String startTime, String endTime)
+    private void sendBinnedMonitorValues(String startTime, String endTime,
+                                         long binTicks)
     {
-        sendSPEMPE(startTime, endTime);
+        sendSPEMPE(startTime, endTime, binTicks);
         sendHV(startTime, endTime);
+        sendTemperature(startTime, endTime);
     }
 
     private void sendMessage(String varname, Map<String, Object> value)
@@ -601,8 +638,18 @@ public class MoniAnalysis
      */
     private void sendSummaryMonitorValues()
     {
-        sendDeadtime();
-        sendPower();
+        String startTime, endTime;
+
+        if (runStartTime == NO_UTCTIME || runEndTime == NO_UTCTIME) {
+            startTime = null;
+            endTime = null;
+        } else {
+            startTime = UTCTime.toDateString(runStartTime);
+            endTime = UTCTime.toDateString(runEndTime);
+        }
+
+        sendDeadtime(startTime, endTime);
+        sendPower(startTime, endTime);
     }
 
     /**
@@ -610,7 +657,7 @@ public class MoniAnalysis
      *
      * @param newQueue new alert queue
      */
-    public void setAlertQueue(AlertQueue newQueue)
+    public void setAlertQueue(IAlertQueue newQueue)
     {
         if (alertQueue != null && !alertQueue.isStopped()) {
             alertQueue.stop();
@@ -624,28 +671,26 @@ public class MoniAnalysis
     }
 
     /**
-     * Switch to a new run.
-     *
-     * @return number of events dispatched before the run was switched
-     *
-     * @param runNumber new run number
+     * Convert ADC units into a celsius temperature
+     * @param rawValue raw ADC value
+     * @return temperature in centigrade
      */
-    public long switchToNewRun(int runNumber)
+    public static double translateTemperature(short rawValue)
     {
-        // parent class switches dispatcher to new run
-        long rtnval = super.switchToNewRun(runNumber);
+        // top 8 bits are the integral part of the temperature
+        double temp = (double) (rawValue >> 8);
 
-        if (fastMoni != null) {
-            try {
-                fastMoni.switchToNewRun(runNumber);
-            } catch (I3HDFException ex) {
-                LOG.error("Cannot switch to new HDF5 file for run " +
-                          runNumber, ex);
-                fastMoni = null;
+        // extract fractional part of temperature
+        // (only top 4 bits are significant)
+        short mask = 0x80;
+        for (int i = 0; i < 4; i++) {
+            if ((rawValue & mask) != 0) {
+                temp += 1.0 / (1 << (i + 1));
             }
+            mask >>= 1;
         }
 
-        return rtnval;
+        return temp;
     }
 
     /**
@@ -653,14 +698,13 @@ public class MoniAnalysis
      */
     private static class DOMValues
     {
-        DeployedDOM dom;
+        DOMInfo dom;
 
         ArrayList<Integer> speScalar = new ArrayList<Integer>();
         ArrayList<Integer> mpeScalar = new ArrayList<Integer>();
 
         boolean baseSet;
         short baseValue;
-        double baseVoltage;
         boolean baseWarned;
 
         long hvTotal;
@@ -672,10 +716,13 @@ public class MoniAnalysis
         long deadtimeTotal;
         int deadtimeCount;
 
+        double mbTempTotal;
+        int mbTempCount;
+
         // OM ID generated from deployed DOM's major/minor values
         private String omId;
 
-        DOMValues(DeployedDOM dom)
+        DOMValues(DOMInfo dom)
         {
             this.dom = dom;
         }
@@ -728,15 +775,24 @@ public class MoniAnalysis
         public String getOmID()
         {
             if (omId == null) {
-                omId = String.format("(%d, %d)", dom.getStringMajor(),
-                                     dom.getStringMinor());
+                omId = dom.getDeploymentLocation();
             }
 
             return omId;
         }
 
+        /**
+         * Fill <tt>rate</tt> and <tt>rateError</tt> maps with string-position
+         * keys mapped to SPE/MPE values
+         *
+         * @param useSPE <tt>true</tt> if filling maps with SPE values
+         * @param rate map holding rate values
+         * @param rateError map holding error values
+         * @param skipZeros don't add zero rates to the list
+         */
         void putRateAndError(boolean useSPE, HashMap<String, Double> rate,
-                             HashMap<String, Double> rateError)
+                             HashMap<String, Double> rateError,
+                             boolean skipZeros)
         {
             ArrayList<Integer> sv;
             if (useSPE) {
@@ -746,8 +802,10 @@ public class MoniAnalysis
             }
 
             if (sv.isEmpty()) {
-                rate.put(getOmID(), 0.0);
-                rateError.put(getOmID(), 0.0);
+                if (!skipZeros) {
+                    rate.put(getOmID(), 0.0);
+                    rateError.put(getOmID(), 0.0);
+                }
             } else {
                 long lsum = 0;
                 for (Integer val : sv) {
@@ -764,14 +822,18 @@ public class MoniAnalysis
             }
         }
 
+        @Override
         public String toString()
         {
-            return String.format("%s: spe %s mpe %s baseVoltage %.2f" +
-                                 " hvTot %d hvCnt %d 5VTot %d 5VCnt %d" +
-                                 " deadTot %d deadCnt %d",
-                                 getOmID(), speScalar, mpeScalar, baseVoltage,
+            return String.format("%s: spe %s mpe %s" +
+                                 " hvTot %d hvCnt %d" +
+                                 " 5VTot %d 5VCnt %d" +
+                                 " deadTot %d deadCnt %d" +
+                                 " mbTemp %.8f mbTempCnt %d",
+                                 getOmID(), speScalar, mpeScalar,
                                  hvTotal, hvCount, power5VTotal, power5VCount,
-                                 deadtimeTotal, deadtimeCount);
+                                 deadtimeTotal, deadtimeCount, mbTempTotal,
+                                 mbTempCount);
         }
     }
 }

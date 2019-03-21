@@ -8,6 +8,7 @@ import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class MockAlerter
     implements Alerter
@@ -42,6 +43,7 @@ public class MockAlerter
     /**
      * Close any open files/sockets.
      */
+    @Override
     public void close()
     {
         closed = true;
@@ -97,10 +99,25 @@ public class MockAlerter
     }
 
     /**
+     * Get the names of all known alerts
+     *
+     * N.B. names are returned in an array in case the caller uses the names
+     * in a loop which calls "alerter.clear(name)" which will modify the
+     * Map's keyset causing a ConcurrentModificationException
+     *
+     * @return set of alert names
+     */
+    public String[] getNames()
+    {
+        return alerts.keySet().toArray(new String[0]);
+    }
+
+    /**
      * Get the service name
      *
      * @return service name
      */
+    @Override
     public String getService()
     {
         return DEFAULT_SERVICE;
@@ -111,6 +128,7 @@ public class MockAlerter
      *
      * @return <tt>true</tt> if this alerter will send messages
      */
+    @Override
     public boolean isActive()
     {
         return !closed;
@@ -121,6 +139,7 @@ public class MockAlerter
      *
      * @param obj object to send
      */
+    @Override
     public void sendObject(Object obj)
         throws AlertException
     {
@@ -210,6 +229,7 @@ public class MockAlerter
         verbose = val;
     }
 
+    @Override
     public String toString()
     {
         return "MockAlerter[" + alerts.size() +" alerts(" +

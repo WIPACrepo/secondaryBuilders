@@ -8,6 +8,7 @@ package icecube.daq.secBuilder;
 
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
+import icecube.daq.io.StreamMetaData;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.impl.Monitor;
@@ -18,10 +19,9 @@ import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerChangedEvent;
 import icecube.daq.splicer.SplicerListener;
 import icecube.daq.util.IDOMRegistry;
-import icecube.daq.util.DeployedDOM;
+import icecube.daq.util.DOMInfo;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -37,7 +37,7 @@ import org.apache.commons.logging.LogFactory;
 public class SBSplicedAnalysis
     implements SplicedAnalysis<Spliceable>, SplicerListener<Spliceable>
 {
-    private static final boolean STRIP_SCINTILLATOR_MONI = true;
+    private static final boolean STRIP_NONSTANDARD_MONI = true;
 
     /** Database of DOM info */
     private static IDOMRegistry domRegistry;
@@ -70,11 +70,9 @@ public class SBSplicedAnalysis
      *
      * @param splicedObjects a List of Spliceable objects.
      */
+    @Override
     public void analyze(List<Spliceable> splicedObjects)
     {
-        // Loop over the new objects in the splicer
-        int numberOfObjectsInSplicer = splicedObjects.size();
-
         for (Spliceable spl : splicedObjects) {
             if (spl == SpliceableFactory.LAST_POSSIBLE_SPLICEABLE) {
                 break;
@@ -92,29 +90,16 @@ public class SBSplicedAnalysis
                 log.error("Unexpected monitoring error from " + payload, thr);
             }
 
-            // scintillator monitoring payloads break legacy IceTop software
-            if (!STRIP_SCINTILLATOR_MONI ||
-                !isScintillatorMonitor(payload))
-            {
+            // scintillator/IceACT monitoring payloads break
+            // legacy IceTop software
+            if (!STRIP_NONSTANDARD_MONI || !isNonStandardDOM(payload)) {
                 // limit the byte buffer to the length specified in the header
                 ByteBuffer buf  = payload.getPayloadBacking();
                 buf.limit(buf.getInt(0));
 
-                if (log.isDebugEnabled()) {
-                    int recl = buf.getInt(0);
-                    int limit = buf.limit();
-                    int capacity = buf.capacity();
-                    log.debug("Writing " +
-                              streamName + " byte buffer - RECL=" +
-                              recl + " LIMIT=" +
-                              limit + " CAP=" +
-                              capacity
-                              );
-                }
-
                 // write out the payload
                 try {
-                    dispatchEvent(buf);
+                    dispatchEvent(buf, payload.getUTCTime());
                 } catch (DispatchException de) {
                     if (log.isErrorEnabled() && !reportedError) {
                         log.error("couldn't dispatch the " + streamName +
@@ -159,7 +144,7 @@ public class SBSplicedAnalysis
      * @return <tt>null</tt> if no DOM was found
      *         (or if no DOM registry has been set)
      */
-    DeployedDOM getDOM(long mbid)
+    DOMInfo getDOM(long mbid)
     {
         if (domRegistry == null) {
             if (!warnedDomRegistry) {
@@ -207,14 +192,21 @@ public class SBSplicedAnalysis
         this.preScaleCount = 1;
     }
 
-    boolean isScintillatorMonitor(IPayload payload)
+    /**
+     * Is this a monitoring payload from a scintillator or IceACT DOM?
+     *
+     * @param payload payload to check
+     *
+     * @return <tt>true</tt> if this is a non-standard DOM
+     */
+    boolean isNonStandardDOM(IPayload payload)
     {
         if (payload instanceof Monitor) {
             Monitor mon = (Monitor) payload;
 
-            DeployedDOM dom = getDOM(mon.getDomId());
+            DOMInfo dom = getDOM(mon.getDomId());
             if (dom != null) {
-                return dom.isScintillator();
+                return dom.isScintillator() || dom.isIceACT();
             }
         }
 
@@ -226,16 +218,20 @@ public class SBSplicedAnalysis
      * (meaning it might not dispatch it).
      *
      * @param buffer the ByteBuffer containg the event.
+     * @param ticks DAQ time for this payload
+     *
      * @throws DispatchException is there is a problem in the Dispatch system.
      */
-    private void dispatchEvent(ByteBuffer buf) throws DispatchException
+    private void dispatchEvent(ByteBuffer buf, long ticks)
+        throws DispatchException
     {
 
         if (preScaling) {
             if (preScaleCount < preScale) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Discarding " + streamName + " prescaled event " +
-                        preScaleCount + " out of " + preScale);
+                    log.debug("Discarding " + streamName +
+                              " prescaled event " + preScaleCount +
+                              " out of " + preScale);
                 }
                 preScaleCount++;
                 return;
@@ -249,15 +245,18 @@ public class SBSplicedAnalysis
         }
 
         synchronized (dispatcher) {
-            dispatcher.dispatchEvent(buf);
+            dispatcher.dispatchEvent(buf, ticks);
         }
     }
 
 
     /**
      * Send any cached monitoring data
+     *
+     * @param stopTime time when the component's stopped() method was called
+     *        (in DAQ ticks)
      */
-    public void finishMonitoring()
+    public void finishMonitoring(long stopTime)
     {
         // do nothing
     }
@@ -279,6 +278,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void disposed(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
@@ -292,11 +292,23 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void failed(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
             log.info("Splicer " + streamName + " entered FAILED state");
         }
+    }
+
+    /**
+     * Get the stream metadata (currently number of dispatched events and
+     * last dispatched time)
+     *
+     * @return metadata object
+     */
+    public StreamMetaData getMetaData()
+    {
+        return dispatcher.getMetaData();
     }
 
     /**
@@ -315,6 +327,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void starting(SplicerChangedEvent<Spliceable> event)
     {
         try {
@@ -338,6 +351,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void started(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
@@ -351,6 +365,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void stopped(SplicerChangedEvent<Spliceable> event)
     {
         try {
@@ -378,6 +393,7 @@ public class SBSplicedAnalysis
      *
      * @param event the event encapsulating this state change.
      */
+    @Override
     public void stopping(SplicerChangedEvent<Spliceable> event)
     {
         if (log.isInfoEnabled()) {
@@ -423,13 +439,16 @@ public class SBSplicedAnalysis
      * @return number of events dispatched before the run was switched
      *
      * @param runNumber new run number
+     *
+     * @param switchTime time when the component's switching() method was
+     *        called (in DAQ ticks)
      */
-    public long switchToNewRun(int runNumber) {
-        long numEvents = 0;
+    public StreamMetaData switchToNewRun(int runNumber, long switchTime) {
+        StreamMetaData metadata;
         try {
             synchronized (dispatcher) {
-                finishMonitoring();
-                numEvents = dispatcher.getNumDispatchedEvents();
+                finishMonitoring(switchTime);
+                metadata = dispatcher.getMetaData();
                 dispatcher.dataBoundary(Dispatcher.SWITCH_PREFIX + runNumber);
                 if (log.isInfoEnabled()) {
                     log.info("switched " + streamName + " to run " +
@@ -441,8 +460,9 @@ public class SBSplicedAnalysis
             if (log.isErrorEnabled()) {
                 log.error("failed to switch " + streamName, de);
             }
+            metadata = null;
         }
 
-        return numEvents;
+        return metadata;
     }
 }

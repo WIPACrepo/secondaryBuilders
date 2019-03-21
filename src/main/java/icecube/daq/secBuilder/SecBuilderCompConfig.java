@@ -67,38 +67,45 @@ public class SecBuilderCompConfig implements SBCompConfig
         }
     }
 
+    @Override
     public int getGranularity()
     {
         return granularity;
     }
 
-    public long getMaxCacheBytes()
-    {
-        return maxCacheByte;
-    }
-
+    @Override
     public long getMaxAcquireBytes()
     {
         return maxAcquireBytes;
     }
 
-    public boolean isTcalEnabled()
+    @Override
+    public long getMaxCacheBytes()
     {
-        return isTcalEnabled;
+        return maxCacheByte;
     }
 
-    public boolean isSnEnabled()
-    {
-        return isSnEnabled;
-    }
-
+    @Override
     public boolean isMoniEnabled()
     {
         return isMoniEnabled;
     }
 
+    @Override
     public boolean isMonitoring()
     {
         return isMonitoring;
+    }
+
+    @Override
+    public boolean isSnEnabled()
+    {
+        return isSnEnabled;
+    }
+
+    @Override
+    public boolean isTcalEnabled()
+    {
+        return isTcalEnabled;
     }
 }

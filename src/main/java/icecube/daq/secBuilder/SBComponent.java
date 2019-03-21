@@ -10,7 +10,8 @@ package icecube.daq.secBuilder;
 import icecube.daq.common.DAQCmdInterface;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.FileDispatcher;
-import icecube.daq.io.SpliceablePayloadReader;
+import icecube.daq.io.SpliceableStreamReader;
+import icecube.daq.io.StreamMetaData;
 import icecube.daq.juggler.component.DAQCompException;
 import icecube.daq.juggler.component.DAQCompServer;
 import icecube.daq.juggler.component.DAQComponent;
@@ -19,17 +20,18 @@ import icecube.daq.juggler.mbean.MemoryStatistics;
 import icecube.daq.juggler.mbean.SystemStatistics;
 import icecube.daq.payload.impl.PayloadFactory;
 import icecube.daq.payload.IByteBufferCache;
+import icecube.daq.payload.impl.UTCTime;
 import icecube.daq.payload.impl.VitreousBufferCache;
 import icecube.daq.splicer.HKN1Splicer;
 import icecube.daq.splicer.PrioritySplicer;
 import icecube.daq.splicer.Spliceable;
 import icecube.daq.splicer.SpliceableComparator;
 import icecube.daq.splicer.SpliceableFactory;
-import icecube.daq.splicer.SpliceableFactory;
 import icecube.daq.splicer.SplicedAnalysis;
 import icecube.daq.splicer.Splicer;
 import icecube.daq.splicer.SplicerException;
-import icecube.daq.util.DOMRegistry;
+import icecube.daq.util.DOMRegistryException;
+import icecube.daq.util.DOMRegistryFactory;
 import icecube.daq.util.IDOMRegistry;
 
 import java.io.IOException;
@@ -56,7 +58,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 15938 2015-12-23 16:54:47Z dglo $
+ * @version $Id: SBComponent.java 17123 2018-10-01 22:09:41Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -65,22 +67,29 @@ public class SBComponent extends DAQComponent
      */
     class SBRunData
     {
-        private long numTCal;
-        private long numSN;
-        private long numMoni;
+        private long tcalCount;
+        private long tcalTicks;
+        private long snCount;
+        private long snTicks;
+        private long moniCount;
+        private long moniTicks;
 
         /**
          * Create an object holding the event totals for a run.
          *
-         * @param numTCal - number of time calibration events dispatched
-         * @param numSN - number of supernova events dispatched
-         * @param numMoni - number of monitoring events dispatched
+         * @param tcalCount - number of time calibration events dispatched
+         * @param snCount - number of supernova events dispatched
+         * @param moniCount - number of monitoring events dispatched
          */
-        SBRunData(long numTCal, long numSN, long numMoni)
+        SBRunData(long tcalCount, long tcalTicks, long snCount, long snTicks,
+                  long moniCount, long moniTicks)
         {
-            this.numTCal = numTCal;
-            this.numSN = numSN;
-            this.numMoni = numMoni;
+            this.tcalCount = tcalCount;
+            this.tcalTicks = tcalTicks;
+            this.snCount = snCount;
+            this.snTicks = snTicks;
+            this.moniCount = moniCount;
+            this.moniTicks = moniTicks;
         }
 
         /**
@@ -90,14 +99,13 @@ public class SBComponent extends DAQComponent
          */
         public long[] toArray()
         {
-            return new long[] { numTCal, numSN, numMoni };
+            return new long[] {
+                tcalCount, tcalTicks, snCount, snTicks, moniCount, moniTicks,
+            };
         }
     }
 
     private static final Log LOG = LogFactory.getLog(SBComponent.class);
-
-    private static final boolean disableIceTopFastMoni =
-        !parseBoolean(System.getProperty("enableIceTopFastMoni", "true"));
 
     private static final boolean USE_PRIO_SPLICER =
         System.getProperty("usePrioritySplicer") != null;
@@ -124,6 +132,8 @@ public class SBComponent extends DAQComponent
     private SBSplicedAnalysis snSplicedAnalysis;
     private MoniAnalysis moniSplicedAnalysis;
 
+    private String dispatchDir;
+
     private Dispatcher tcalDispatcher;
     private Dispatcher snDispatcher;
     private Dispatcher moniDispatcher;
@@ -132,10 +142,11 @@ public class SBComponent extends DAQComponent
     private SecBuilderMonitor snBuilderMonitor;
     private SecBuilderMonitor moniBuilderMonitor;
 
-    private SpliceablePayloadReader tcalInputEngine;
-    private SpliceablePayloadReader snInputEngine;
-    private SpliceablePayloadReader moniInputEngine;
+    private SpliceableStreamReader tcalInputEngine;
+    private SpliceableStreamReader snInputEngine;
+    private SpliceableStreamReader moniInputEngine;
 
+    private boolean isMonitoring;
     private boolean isTcalEnabled;
     private boolean isSnEnabled;
     private boolean isMoniEnabled;
@@ -157,18 +168,28 @@ public class SBComponent extends DAQComponent
     {
         super(COMP_NAME, COMP_ID);
 
-        boolean isMonitoring = compConfig.isMonitoring();
+        isMonitoring = compConfig.isMonitoring();
         isTcalEnabled = compConfig.isTcalEnabled();
         isSnEnabled = compConfig.isSnEnabled();
         isMoniEnabled = compConfig.isMoniEnabled();
+    }
 
+    @Override
+    public void initialize()
+        throws DAQCompException
+    {
         // init tcalBuilder classes
-        if (isTcalEnabled) {
+        if (!isTcalEnabled) {
+            tcalDispatcher = null;
+        } else {
             if (LOG.isInfoEnabled()) {
                 LOG.info("Constructing TcalBuilder");
             }
             tcalBufferCache = new VitreousBufferCache("SBTCal", 350000000);
             tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
+            if (dispatchDir != null) {
+                tcalDispatcher.setDispatchDestStorage(dispatchDir);
+            }
             addCache(DAQConnector.TYPE_TCAL_DATA, tcalBufferCache);
             addMBean("tcalCache", tcalBufferCache);
             tcalFactory = new PayloadFactory(tcalBufferCache);
@@ -179,7 +200,7 @@ public class SBComponent extends DAQComponent
             tcalSplicedAnalysis.setSplicer(tcalSplicer);
             tcalSplicedAnalysis.setStreamName("tcal");
             try {
-                tcalInputEngine = new SpliceablePayloadReader(
+                tcalInputEngine = new SpliceableStreamReader(
                     "tcalInputEngine", 50000, tcalSplicer, tcalFactory);
                 addMonitoredEngine(DAQConnector.TYPE_TCAL_DATA,
                     tcalInputEngine);
@@ -198,12 +219,17 @@ public class SBComponent extends DAQComponent
         }
 
         // init snBuilder
-        if (isSnEnabled) {
+        if (!isSnEnabled) {
+            snDispatcher = null;
+        } else {
             if (LOG.isInfoEnabled()) {
                 LOG.info("Constructing SNBuilder");
             }
             snBufferCache = new VitreousBufferCache("SBSN", 500000000);
             snDispatcher = new FileDispatcher("sn", snBufferCache);
+            if (dispatchDir != null) {
+                snDispatcher.setDispatchDestStorage(dispatchDir);
+            }
             addCache(DAQConnector.TYPE_SN_DATA, snBufferCache);
             addMBean("snCache", snBufferCache);
             snFactory = new PayloadFactory(snBufferCache);
@@ -214,7 +240,7 @@ public class SBComponent extends DAQComponent
             snSplicedAnalysis.setSplicer(snSplicer);
             snSplicedAnalysis.setStreamName("sn");
             try {
-                snInputEngine = new SpliceablePayloadReader("stringHubSnInput",
+                snInputEngine = new SpliceableStreamReader("stringHubSnInput",
                     25000, snSplicer, snFactory);
                 addMonitoredEngine(DAQConnector.TYPE_SN_DATA, snInputEngine);
 
@@ -231,12 +257,17 @@ public class SBComponent extends DAQComponent
         }
 
         // init moniBuilder classes
-        if (isMoniEnabled) {
+        if (!isMoniEnabled) {
+            moniDispatcher = null;
+        } else {
             if (LOG.isInfoEnabled()) {
                 LOG.info("Constructing MoniBuilder");
             }
             moniBufferCache = new VitreousBufferCache("SBMoni", 350000000);
             moniDispatcher = new FileDispatcher("moni", moniBufferCache);
+            if (dispatchDir != null) {
+                moniDispatcher.setDispatchDestStorage(dispatchDir);
+            }
             addCache(DAQConnector.TYPE_MONI_DATA, moniBufferCache);
             addMBean("moniCache", moniBufferCache);
             moniFactory = new PayloadFactory(moniBufferCache);
@@ -244,14 +275,10 @@ public class SBComponent extends DAQComponent
             moniSplicer = createSplicer(moniSplicedAnalysis);
             addSplicer(moniSplicer);
 
-            if (disableIceTopFastMoni) {
-                moniSplicedAnalysis.disableIceTopFastMoni();
-            }
-
             moniSplicedAnalysis.setSplicer(moniSplicer);
             moniSplicedAnalysis.setStreamName("moni");
             try {
-                moniInputEngine = new SpliceablePayloadReader(
+                moniInputEngine = new SpliceableStreamReader(
                     "stringHubMoniInput", 5000, moniSplicer, moniFactory);
                 addMonitoredEngine(DAQConnector.TYPE_MONI_DATA,
                     moniInputEngine);
@@ -295,14 +322,14 @@ public class SBComponent extends DAQComponent
      *
      * @return <tt>true</tt> if the string has a "true" value
      */
-    private static final boolean parseBoolean(String str)
+    private static boolean parseBoolean(String str)
     {
         if (str == null) {
             return false;
         }
 
         return str.equalsIgnoreCase("true") || str.equalsIgnoreCase("yes") ||
-            str == "1";
+            str.equals("1");
     }
 
     /**
@@ -311,6 +338,7 @@ public class SBComponent extends DAQComponent
      *
      * @param dirName directory name
      */
+    @Override
     public void setGlobalConfigurationDir(String dirName)
     {
         if (LOG.isDebugEnabled()) {
@@ -321,15 +349,9 @@ public class SBComponent extends DAQComponent
 
         IDOMRegistry domRegistry;
         try {
-            domRegistry = DOMRegistry.loadRegistry(dirName);
-        } catch (ParserConfigurationException pce) {
-            LOG.error("Cannot load DOM registry", pce);
-            domRegistry = null;
-        } catch (SAXException se) {
-            LOG.error("Cannot load DOM registry", se);
-            domRegistry = null;
-        } catch (IOException ioe) {
-            LOG.error("Cannot load DOM registry", ioe);
+            domRegistry = DOMRegistryFactory.load(dirName);
+        } catch (DOMRegistryException dre) {
+            LOG.error("Cannot load DOM registry", dre);
             domRegistry = null;
         }
 
@@ -346,6 +368,7 @@ public class SBComponent extends DAQComponent
      *
      * @throws DAQCompException if there is a problem configuring
      */
+    @Override
     public void configuring(String configName) throws DAQCompException
     {
         String runConfigFileName = configDirName + "/" + configName;
@@ -468,16 +491,19 @@ public class SBComponent extends DAQComponent
      * @param dirName The absolute path of directory where the dispatch
      * files will be stored.
      */
+    @Override
     public void setDispatchDestStorage(String dirName)
     {
-        if (isTcalEnabled) {
-            tcalDispatcher.setDispatchDestStorage(dirName);
+        dispatchDir = dirName;
+
+        if (tcalDispatcher != null) {
+            tcalDispatcher.setDispatchDestStorage(dispatchDir);
         }
-        if (isSnEnabled) {
-            snDispatcher.setDispatchDestStorage(dirName);
+        if (snDispatcher != null) {
+            snDispatcher.setDispatchDestStorage(dispatchDir);
         }
-        if (isMoniEnabled) {
-            moniDispatcher.setDispatchDestStorage(dirName);
+        if (moniDispatcher != null) {
+            moniDispatcher.setDispatchDestStorage(dispatchDir);
         }
     }
 
@@ -486,6 +512,7 @@ public class SBComponent extends DAQComponent
      *
      * @param maxFileSize the maximum size of the dispatch file.
      */
+    @Override
     public void setMaxFileSize(long maxFileSize)
     {
         if (isTcalEnabled) {
@@ -504,9 +531,10 @@ public class SBComponent extends DAQComponent
      *
      * @return svn version id as a String
      */
+    @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 15938 2015-12-23 16:54:47Z dglo $";
+        return "$Id: SBComponent.java 17123 2018-10-01 22:09:41Z dglo $";
     }
 
     /**
@@ -514,6 +542,7 @@ public class SBComponent extends DAQComponent
      *
      * @param runNumber run number
      */
+    @Override
     public void starting(int runNumber)
     {
         if (LOG.isInfoEnabled()) {
@@ -534,17 +563,28 @@ public class SBComponent extends DAQComponent
 
     /**
      * Save final event counts.
+     *
+     * @param stopTime time when the component's stopped() method was called
+     *        (in DAQ ticks)
      */
+    @Override
     public void stopped()
     {
-        moniSplicedAnalysis.finishMonitoring();
-        snSplicedAnalysis.finishMonitoring();
-        tcalSplicedAnalysis.finishMonitoring();
+        final long stopTime = new UTCTime().longValue();
+
+        moniSplicedAnalysis.finishMonitoring(stopTime);
+        StreamMetaData moniMD = moniSplicedAnalysis.getMetaData();
+
+        snSplicedAnalysis.finishMonitoring(stopTime);
+        StreamMetaData snMD = snSplicedAnalysis.getMetaData();
+
+        tcalSplicedAnalysis.finishMonitoring(stopTime);
+        StreamMetaData tcalMD = tcalSplicedAnalysis.getMetaData();
 
         runData.put(runNumber,
-                    new SBRunData(tcalDispatcher.getNumDispatchedEvents(),
-                                  snDispatcher.getNumDispatchedEvents(),
-                                  moniDispatcher.getNumDispatchedEvents()));
+                    new SBRunData(tcalMD.getCount(), tcalMD.getTicks(),
+                                  snMD.getCount(), snMD.getTicks(),
+                                  moniMD.getCount(), moniMD.getTicks()));
     }
 
     /**
@@ -554,29 +594,40 @@ public class SBComponent extends DAQComponent
      *
      * @throws DAQCompException if there is a problem switching the component
      */
+    @Override
     public void switching(int runNumber)
         throws DAQCompException
     {
-        long numTCal = 0;
-        long numSN = 0;
-        long numMoni = 0;
+        final long switchTime = new UTCTime().longValue();
+
+        StreamMetaData tcalMD;
+        StreamMetaData snMD;
+        StreamMetaData moniMD;
 
         if (LOG.isInfoEnabled()){
             LOG.info("Setting runNumber = " + runNumber);
         }
         if (isTcalEnabled) {
-            numTCal = tcalSplicedAnalysis.switchToNewRun(runNumber);
+            tcalMD = tcalSplicedAnalysis.switchToNewRun(runNumber, switchTime);
+        } else {
+            tcalMD = new StreamMetaData(-1, -1);
         }
         if (isSnEnabled) {
-            numSN = snSplicedAnalysis.switchToNewRun(runNumber);
+            snMD = snSplicedAnalysis.switchToNewRun(runNumber, switchTime);
+        } else {
+            snMD = new StreamMetaData(-1, -1);
         }
         if (isMoniEnabled) {
-            numMoni = moniSplicedAnalysis.switchToNewRun(runNumber);
+            moniMD = moniSplicedAnalysis.switchToNewRun(runNumber, switchTime);
+        } else {
+            moniMD = new StreamMetaData(-1, -1);
         }
 
         // save run data for later retrieval
         runData.put(this.runNumber,
-                    new SBRunData(numTCal, numSN, numMoni));
+                    new SBRunData(tcalMD.getCount(), tcalMD.getTicks(),
+                                  snMD.getCount(), snMD.getTicks(),
+                                  moniMD.getCount(), moniMD.getTicks()));
 
         this.runNumber = runNumber;
     }
@@ -585,11 +636,15 @@ public class SBComponent extends DAQComponent
      * Get the run data for the specified run.
      *
      * @return array of <tt>long</tt> values:<ol>
-     *    <li>number of time calibration events
-     *    <li>number of supernova events
-     *    <li>number of monitoring events
+     *    <li>number of time calibration payloads
+     *    <li>time of last time calibration payload (in 0.1ns)
+     *    <li>number of supernova payloads
+     *    <li>time of last supernova payload (in 0.1ns)
+     *    <li>number of monitoring payloads
+     *    <li>time of last time calibration payload (in 0.1ns)
      *    </ol>
      */
+    @Override
     public long[] getRunData(int runNum)
         throws DAQCompException
     {
@@ -608,6 +663,7 @@ public class SBComponent extends DAQComponent
      *
      * @return current run number
      */
+    @Override
     public int getRunNumber()
     {
         return runNumber;
