@@ -45,8 +45,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -58,7 +57,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 17123 2018-10-01 22:09:41Z dglo $
+ * @version $Id: SBComponent.java 17299 2019-03-21 20:46:49Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -105,7 +104,7 @@ public class SBComponent extends DAQComponent
         }
     }
 
-    private static final Log LOG = LogFactory.getLog(SBComponent.class);
+    private static final Logger LOG = Logger.getLogger(SBComponent.class);
 
     private static final boolean USE_PRIO_SPLICER =
         System.getProperty("usePrioritySplicer") != null;
@@ -534,7 +533,7 @@ public class SBComponent extends DAQComponent
     @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 17123 2018-10-01 22:09:41Z dglo $";
+        return "$Id: SBComponent.java 17299 2019-03-21 20:46:49Z dglo $";
     }
 
     /**

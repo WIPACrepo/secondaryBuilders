@@ -7,8 +7,7 @@
  */
 package icecube.daq.secBuilder;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 /**
  * This class provides configuration for secondary builders
@@ -27,7 +26,7 @@ public class SecBuilderCompConfig implements SBCompConfig
     private boolean isMoniEnabled = true;
     private boolean isMonitoring = true;
 
-    private Log log = LogFactory.getLog(SecBuilderCompConfig.class);
+    private Logger log = Logger.getLogger(SecBuilderCompConfig.class);
 
     public SecBuilderCompConfig(int granularity, long maxCacheByte,
                                 long maxAcquireBytes, boolean isTcalEnabled,
