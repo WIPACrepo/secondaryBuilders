@@ -1147,16 +1147,6 @@ class MockMoniPayload
         this.utcTime = utcTime;
     }
 
-    /**
-     * Unimplemented
-     * @return Error
-     */
-    @Override
-    public int getPayloadInterfaceType()
-    {
-        throw new Error("Unimplemented");
-    }
-
     @Override
     public IUTCTime getPayloadTimeUTC()
     {
