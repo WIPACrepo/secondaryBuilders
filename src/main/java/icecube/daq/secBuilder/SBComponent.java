@@ -55,7 +55,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 17559 2019-10-30 19:16:41Z dglo $
+ * @version $Id: SBComponent.java 17566 2019-11-04 20:12:21Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -401,11 +401,18 @@ public class SBComponent extends DAQComponent
             XPath xpath = XPathFactory.newInstance().newXPath();
 
             // is this a SuperSaver run?
-            String save_expr = "/runConfig/supersaver";
+            final String save_expr = "/runConfig/supersaver";
             NodeList saveNodes =
                 (NodeList) xpath.evaluate(save_expr, doc,
                                           XPathConstants.NODESET);
-            boolean supersaver = saveNodes.getLength() == 1;
+            if (saveNodes.getLength() > 1) {
+                final String errmsg = "Found " + saveNodes.getLength() +
+                    " secondaryBuilder <supersaver/> tags rather than 1 in " +
+                    runConfigFileName;
+                throw new DAQCompException(errmsg);
+            }
+
+            final boolean supersaver = saveNodes.getLength() == 1;
             if (isMoniEnabled) {
                 moniDispatcher.setSuperSaver(supersaver);
             }
@@ -548,7 +555,7 @@ public class SBComponent extends DAQComponent
     @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 17559 2019-10-30 19:16:41Z dglo $";
+        return "$Id: SBComponent.java 17566 2019-11-04 20:12:21Z dglo $";
     }
 
     /**
