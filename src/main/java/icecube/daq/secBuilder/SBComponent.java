@@ -8,8 +8,6 @@
 package icecube.daq.secBuilder;
 
 import icecube.daq.common.DAQCmdInterface;
-import icecube.daq.io.Dispatcher;
-import icecube.daq.io.FileDispatcher;
 import icecube.daq.io.SpliceableStreamReader;
 import icecube.daq.io.StreamMetaData;
 import icecube.daq.juggler.component.DAQCompException;
@@ -57,7 +55,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 17299 2019-03-21 20:46:49Z dglo $
+ * @version $Id: SBComponent.java 17601 2019-11-22 07:16:13Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -133,9 +131,9 @@ public class SBComponent extends DAQComponent
 
     private String dispatchDir;
 
-    private Dispatcher tcalDispatcher;
-    private Dispatcher snDispatcher;
-    private Dispatcher moniDispatcher;
+    private SuperDispatcher tcalDispatcher;
+    private SuperDispatcher snDispatcher;
+    private SuperDispatcher moniDispatcher;
 
     private SecBuilderMonitor tcalBuilderMonitor;
     private SecBuilderMonitor snBuilderMonitor;
@@ -185,7 +183,7 @@ public class SBComponent extends DAQComponent
                 LOG.info("Constructing TcalBuilder");
             }
             tcalBufferCache = new VitreousBufferCache("SBTCal", 350000000);
-            tcalDispatcher = new FileDispatcher("tcal", tcalBufferCache);
+            tcalDispatcher = new SuperDispatcher("tcal", tcalBufferCache);
             if (dispatchDir != null) {
                 tcalDispatcher.setDispatchDestStorage(dispatchDir);
             }
@@ -225,7 +223,7 @@ public class SBComponent extends DAQComponent
                 LOG.info("Constructing SNBuilder");
             }
             snBufferCache = new VitreousBufferCache("SBSN", 500000000);
-            snDispatcher = new FileDispatcher("sn", snBufferCache);
+            snDispatcher = new SuperDispatcher("sn", snBufferCache);
             if (dispatchDir != null) {
                 snDispatcher.setDispatchDestStorage(dispatchDir);
             }
@@ -263,7 +261,7 @@ public class SBComponent extends DAQComponent
                 LOG.info("Constructing MoniBuilder");
             }
             moniBufferCache = new VitreousBufferCache("SBMoni", 350000000);
-            moniDispatcher = new FileDispatcher("moni", moniBufferCache);
+            moniDispatcher = new SuperDispatcher("moni", moniBufferCache);
             if (dispatchDir != null) {
                 moniDispatcher.setDispatchDestStorage(dispatchDir);
             }
@@ -402,6 +400,30 @@ public class SBComponent extends DAQComponent
 
             XPath xpath = XPathFactory.newInstance().newXPath();
 
+            // is this a SuperSaver run?
+            final String save_expr = "/runConfig/supersaver";
+            NodeList saveNodes =
+                (NodeList) xpath.evaluate(save_expr, doc,
+                                          XPathConstants.NODESET);
+            if (saveNodes.getLength() > 1) {
+                final String errmsg = "Found " + saveNodes.getLength() +
+                    " secondaryBuilder <supersaver/> tags rather than 1 in " +
+                    runConfigFileName;
+                throw new DAQCompException(errmsg);
+            }
+
+            final boolean supersaver = saveNodes.getLength() == 1;
+            if (isMoniEnabled) {
+                moniDispatcher.setSuperSaver(supersaver);
+            }
+            if (isSnEnabled) {
+                snDispatcher.setSuperSaver(supersaver);
+            }
+            if (isTcalEnabled) {
+                tcalDispatcher.setSuperSaver(supersaver);
+            }
+
+            // check all subcomponents for prescale setting
             String sb_expr =
                 "/runConfig/runComponent[@name='secondaryBuilders']";
             NodeList sbNodes = (NodeList) xpath.evaluate(sb_expr, doc,
@@ -417,6 +439,8 @@ public class SBComponent extends DAQComponent
                 long tcal_prescale = parsePrescale("tcal", sbNode, xpath);
                 if (tcal_prescale > 0L) {
                     tcalSplicedAnalysis.setPreScale(tcal_prescale);
+                } else if (supersaver) {
+                    tcalSplicedAnalysis.setPreScale(1L);
                 }
             }
 
@@ -533,7 +557,7 @@ public class SBComponent extends DAQComponent
     @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 17299 2019-03-21 20:46:49Z dglo $";
+        return "$Id: SBComponent.java 17601 2019-11-22 07:16:13Z dglo $";
     }
 
     /**
