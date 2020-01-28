@@ -16,7 +16,7 @@ import org.apache.log4j.Logger;
 class SuperDispatcher
     extends FileDispatcher
 {
-    private static final Logger LOG = Logger.getLogger(FileDispatcher.class);
+    private static final Logger LOG = Logger.getLogger(SuperDispatcher.class);
 
     private boolean supersaver;
 
