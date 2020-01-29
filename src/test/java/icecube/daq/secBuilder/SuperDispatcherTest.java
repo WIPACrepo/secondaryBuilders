@@ -59,6 +59,23 @@ public class SuperDispatcherTest
         super(name);
     }
 
+    private void checkLogMessages(String runNumber)
+    {
+        try {
+            for (int i = 0; i < getNumberOfMessages(); i++) {
+                String msg = (String) getMessage(i);
+
+                if (!msg.startsWith("Created supersaver." + runNumber) &&
+                    !msg.startsWith("Created supersaved." + runNumber))
+                {
+                    fail("Bad log message#" + i + ": " + msg);
+                }
+            }
+        } finally {
+            clearMessages();
+        }
+    }
+
     private static boolean clearDirectory(File dir)
     {
         if (dir.isDirectory()) {
@@ -211,6 +228,8 @@ public class SuperDispatcherTest
 
         assertEquals("Total dispatched events was not incremented",
                      1, sdisp.getTotalDispatchedEvents());
+
+        checkLogMessages(runNumber);
     }
 
     /**
