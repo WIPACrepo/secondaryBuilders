@@ -55,7 +55,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 17566 2019-11-04 20:12:21Z dglo $
+ * @version $Id: SBComponent.java 17684 2020-01-29 17:40:53Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -439,6 +439,8 @@ public class SBComponent extends DAQComponent
                 long tcal_prescale = parsePrescale("tcal", sbNode, xpath);
                 if (tcal_prescale > 0L) {
                     tcalSplicedAnalysis.setPreScale(tcal_prescale);
+                } else if (supersaver) {
+                    tcalSplicedAnalysis.setPreScale(1L);
                 }
             }
 
@@ -555,7 +557,7 @@ public class SBComponent extends DAQComponent
     @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 17566 2019-11-04 20:12:21Z dglo $";
+        return "$Id: SBComponent.java 17684 2020-01-29 17:40:53Z dglo $";
     }
 
     /**
