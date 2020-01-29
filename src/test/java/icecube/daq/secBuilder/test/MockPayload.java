@@ -50,6 +50,16 @@ public abstract class MockPayload
         throw new Error("Unimplemented");
     }
 
+    /**
+     * Unimplemented
+     * @return Error
+     */
+    @Override
+    public int getPayloadInterfaceType()
+    {
+        throw new Error("Unimplemented");
+    }
+
     @Override
     public IUTCTime getPayloadTimeUTC()
     {
@@ -117,6 +127,7 @@ public abstract class MockPayload
         }
     }
 
+    @Override
     public int writePayload(boolean writeLoaded, int offset, ByteBuffer buf)
         throws IOException
     {
