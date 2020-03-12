@@ -1,6 +1,5 @@
 package icecube.daq.secBuilder.test;
 
-import icecube.daq.payload.PayloadInterfaceRegistry;
 import icecube.daq.payload.IByteBufferCache;
 import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IUTCTime;
@@ -46,16 +45,6 @@ public abstract class MockPayload
 
     @Override
     public ByteBuffer getPayloadBacking()
-    {
-        throw new Error("Unimplemented");
-    }
-
-    /**
-     * Unimplemented
-     * @return Error
-     */
-    @Override
-    public int getPayloadInterfaceType()
     {
         throw new Error("Unimplemented");
     }
