@@ -4,7 +4,6 @@ import icecube.daq.common.MockAppender;
 import icecube.daq.io.PayloadFileReader;
 import icecube.daq.juggler.alert.AlertException;
 import icecube.daq.juggler.alert.AlertQueue;
-import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.IUTCTime;
 import icecube.daq.payload.PayloadException;
@@ -275,7 +274,7 @@ public class MoniAnalysisTest
             for (IPayload pay : in) {
                 // load the payload
                 try {
-                    ((ILoadablePayload) pay).loadPayload();
+                    ((IPayload) pay).loadPayload();
                 } catch (IOException ioe) {
                     System.err.println("Cannot load payload " + pay);
                     ioe.printStackTrace();
@@ -289,7 +288,7 @@ public class MoniAnalysisTest
                 if (pay instanceof HardwareMonitor) {
                     HardwareMonitor mon = (HardwareMonitor) pay;
 
-                    System.out.printf("%012x %s HARD %d %d\n", mon.getDomId(),
+                    System.out.printf("%012x %s HARD %d %d\n", mon.getDOMID(),
                                       mon.getPayloadTimeUTC().toDateString(),
                                       mon.getSPEScalar(), mon.getMPEScalar());
                 } else if (pay instanceof ASCIIMonitor) {
@@ -333,7 +332,7 @@ public class MoniAnalysisTest
                         }
                     }
 
-                    System.out.printf("%012x %s FAST %d %d\n", mon.getDomId(),
+                    System.out.printf("%012x %s FAST %d %d\n", mon.getDOMID(),
                                       mon.getPayloadTimeUTC().toDateString(),
                                       speCount, mpeCount);
                 }
@@ -780,7 +779,7 @@ class MoniValidator
     {
         mon.loadPayload();
 
-        DOMInfo dom = reg.getDom(mon.getDomId());
+        DOMInfo dom = reg.getDom(mon.getDOMID());
         if (!curTotals.containsKey(dom)) {
             curTotals.put(dom, new MoniTotals());
         }

@@ -151,7 +151,7 @@ public class TCalData
 
     public String getDateString() { return gpsStr; }
 
-    public long getDomId() { return domId; }
+    public long getDOMID() { return domId; }
 
     public long getDomRXTime() { return domRx; }
     public long getDomTXTime() { return domTx; }

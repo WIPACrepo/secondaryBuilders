@@ -9,7 +9,6 @@ package icecube.daq.secBuilder;
 import icecube.daq.io.DispatchException;
 import icecube.daq.io.Dispatcher;
 import icecube.daq.io.StreamMetaData;
-import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.impl.Monitor;
 import icecube.daq.splicer.SpliceableFactory;
@@ -78,7 +77,7 @@ public class SBSplicedAnalysis
             }
 
             // get the next payload
-            ILoadablePayload payload = (ILoadablePayload) spl;
+            IPayload payload = (IPayload) spl;
 
             // gather data for monitoring messages
             try {
@@ -203,7 +202,7 @@ public class SBSplicedAnalysis
         if (payload instanceof Monitor) {
             Monitor mon = (Monitor) payload;
 
-            DOMInfo dom = getDOM(mon.getDomId());
+            DOMInfo dom = getDOM(mon.getDOMID());
             if (dom != null) {
                 return dom.isScintillator() || dom.isIceACT();
             }

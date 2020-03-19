@@ -5,7 +5,7 @@ import icecube.daq.io.Dispatcher;
 import icecube.daq.io.StreamMetaData;
 import icecube.daq.payload.IByteBufferCache;
 import icecube.daq.payload.IEventPayload;
-import icecube.daq.payload.IWriteablePayload;
+import icecube.daq.payload.IPayload;
 import icecube.daq.payload.PayloadChecker;
 
 import java.io.File;
@@ -66,7 +66,7 @@ public class MockDispatcher
     }
 
     @Override
-    public void dispatchEvent(IWriteablePayload pay)
+    public void dispatchEvent(IPayload pay)
         throws DispatchException
     {
         numSeen++;

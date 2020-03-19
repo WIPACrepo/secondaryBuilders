@@ -4,7 +4,6 @@ import icecube.daq.io.Dispatcher;
 import icecube.daq.juggler.alert.Alerter;
 import icecube.daq.juggler.alert.AlertException;
 import icecube.daq.juggler.alert.IAlertQueue;
-import icecube.daq.payload.ILoadablePayload;
 import icecube.daq.payload.IPayload;
 import icecube.daq.payload.PayloadFormatException;
 import icecube.daq.payload.impl.ASCIIMonitor;
@@ -218,7 +217,7 @@ public class MoniAnalysis
 
         // load the payload
         try {
-            ((ILoadablePayload) payload).loadPayload();
+            ((IPayload) payload).loadPayload();
         } catch (IOException ioe) {
             throw new MoniException("Cannot load monitoring payload " +
                                     payload, ioe);
@@ -260,9 +259,9 @@ public class MoniAnalysis
         if (payload instanceof HardwareMonitor) {
             HardwareMonitor mon = (HardwareMonitor) payload;
 
-            DOMValues dval = findDOMValues(domValues, mon.getDomId());
+            DOMValues dval = findDOMValues(domValues, mon.getDOMID());
             if (dval == null) {
-                LOG.error("Cannot find DOM " + mon.getDomId());
+                LOG.error("Cannot find DOM " + mon.getDOMID());
             } else {
                 synchronized (dval) {
                     dval.addSPEScalar(mon.getSPEScalar());
@@ -313,9 +312,9 @@ public class MoniAnalysis
                 return;
             }
 
-            DOMValues dval = findDOMValues(domValues, mon.getDomId());
+            DOMValues dval = findDOMValues(domValues, mon.getDOMID());
             if (dval == null) {
-                LOG.error("Cannot find DOM " + mon.getDomId());
+                LOG.error("Cannot find DOM " + mon.getDOMID());
             } else {
                 final boolean icetop = dval.dom.isIceTop();
 
