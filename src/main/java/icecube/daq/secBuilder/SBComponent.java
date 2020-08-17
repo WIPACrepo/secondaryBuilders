@@ -55,7 +55,7 @@ import org.xml.sax.SAXException;
  * This is the place where we initialize all the IO engines, splicers
  * and monitoring classes for secondary builders
  *
- * @version $Id: SBComponent.java 17684 2020-01-29 17:40:53Z dglo $
+ * @version $Id: SBComponent.java 17851 2020-08-17 22:20:12Z dglo $
  */
 public class SBComponent extends DAQComponent
 {
@@ -557,7 +557,7 @@ public class SBComponent extends DAQComponent
     @Override
     public String getVersionInfo()
     {
-        return "$Id: SBComponent.java 17684 2020-01-29 17:40:53Z dglo $";
+        return "$Id: SBComponent.java 17851 2020-08-17 22:20:12Z dglo $";
     }
 
     /**
@@ -566,7 +566,7 @@ public class SBComponent extends DAQComponent
      * @param runNumber run number
      */
     @Override
-    public void starting(int runNumber)
+    public void starting(int runNumber, int domMode)
     {
         if (LOG.isInfoEnabled()) {
             LOG.info("Setting runNumber = " + runNumber);
